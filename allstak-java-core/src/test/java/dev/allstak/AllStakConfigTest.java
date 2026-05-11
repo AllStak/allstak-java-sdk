@@ -70,7 +70,7 @@ class AllStakConfigTest {
         assertThat(config.getFlushIntervalMs()).isEqualTo(5000);
         assertThat(config.getBufferSize()).isEqualTo(500);
         assertThat(config.isDebug()).isFalse();
-        assertThat(config.getEnvironment()).isNull();
-        assertThat(config.getRelease()).isNull();
+        assertThat(config.getEnvironment()).isEqualTo("production");
+        assertThat(config.getRelease()).isEqualTo("production");
     }
 }
