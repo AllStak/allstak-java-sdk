@@ -3,7 +3,7 @@
 **Production error tracking + structured logs for Spring Boot apps. Auto-configures in one dependency.**
 
 [![Maven Central](https://img.shields.io/maven-central/v/sa.allstak/allstak-java-core.svg)](https://central.sonatype.com/artifact/sa.allstak/allstak-java-core)
-[![CI](https://github.com/allstak-io/allstak-java-sdk/actions/workflows/ci.yml/badge.svg)](https://github.com/allstak-io/allstak-java-sdk/actions)
+[![CI](https://github.com/AllStak/allstak-java-sdk/actions/workflows/ci.yml/badge.svg)](https://github.com/AllStak/allstak-java-sdk/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 Official AllStak SDK for Java and Spring Boot — captures exceptions, structured logs, HTTP requests, database queries, and distributed traces with a single auto-configured starter.
@@ -160,7 +160,7 @@ Production endpoint: `https://api.allstak.sa`. The host is not customer-configur
 
 - Documentation: https://docs.allstak.sa
 - Dashboard: https://app.allstak.sa
-- Source: https://github.com/allstak-io/allstak-java-sdk
+- Source: https://github.com/AllStak/allstak-java-sdk
 
 ## License
 
