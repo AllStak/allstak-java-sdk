@@ -24,17 +24,6 @@ View captured events live at [app.allstak.sa](https://app.allstak.sa).
 - Cron heartbeats and outbound HTTP capture
 - Java 17+ / Spring Boot 3.x
 
-## What You Get
-
-Once integrated, every event flows to your AllStak dashboard:
-
-- **Errors** — stack traces, breadcrumbs, release + environment tags
-- **Logs** — structured logs bridged from SLF4J with search and filters
-- **HTTP** — inbound and outbound request timing, status codes, failed calls
-- **Database** — JDBC query capture with statement normalization
-- **Traces** — distributed spans with context propagation
-- **Alerts** — email and webhook notifications on regressions
-
 ## Installation
 
 ### Maven
@@ -128,7 +117,9 @@ AllStak.captureException(new RuntimeException("test: hello from allstak-java"));
 | `maxBreadcrumbs` | `int` | no | `50` | Ring buffer size |
 | `debug` | `boolean` | no | `false` | Verbose SDK logging |
 
-The ingest endpoint is fixed at `https://api.allstak.sa` and set by `AllStakConfig.INGEST_HOST`.
+The ingest endpoint defaults to `https://api.allstak.sa` and can be overridden
+with `allstak.host`, `ALLSTAK_HOST`, or `AllStakConfig.builder().host(...)` for
+dev and self-hosted deployments.
 
 ## Example Usage
 
@@ -152,9 +143,24 @@ AllStak.setUser(new UserContext("u_42", "alice@example.com"));
 AllStak.setTag("region", "eu-west-1");
 ```
 
+## Fail-Open Reliability
+
+AllStak telemetry is best-effort. Runtime capture APIs enqueue into bounded
+background workers and drop telemetry before harming the host process. If
+AllStak ingest is down, slow, rate-limiting, under maintenance, or unreachable,
+customer requests continue normally.
+
+- Spring servlet filters and interceptors never wait on AllStak transport.
+- Error, heartbeat, span, log, request, and DB telemetry use bounded queues or
+  bounded background delivery.
+- DNS, connection, timeout, 429, 500, and 503 failure modes are covered by
+  automated fail-open tests.
+- Shutdown flush is bounded and optional.
+
 ## Production Endpoint
 
-Production endpoint: `https://api.allstak.sa`. The host is not customer-configurable in the public API; self-hosted deployments should build from source and override `AllStakConfig.INGEST_HOST`.
+Production endpoint: `https://api.allstak.sa`. Override with `allstak.host`,
+`ALLSTAK_HOST`, or `AllStakConfig.builder().host(...)`.
 
 ## Links
 
