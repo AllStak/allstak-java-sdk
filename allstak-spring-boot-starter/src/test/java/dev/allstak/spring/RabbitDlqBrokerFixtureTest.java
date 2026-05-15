@@ -122,8 +122,11 @@ class RabbitDlqBrokerFixtureTest {
                     .withRequestBody(containing("\"messaging.rabbitmq.x_death_count\""))
                     .withRequestBody(containing(DLX)));
             ingest.verify(postRequestedFor(urlEqualTo("/ingest/v1/spans"))
-                    .withRequestBody(containing("\"messaging.rabbitmq.x_death_count\""))
-                    .withRequestBody(containing("\"messaging.rabbitmq.dead_letter_exchange\":\"" + DLX + "\"")));
+                    .withRequestBody(containing("\"span.kind\":\"messaging.consumer\""))
+                    .withRequestBody(containing("\"messaging.rabbitmq.x_death_count\":\"1\""))
+                    .withRequestBody(containing("\"messaging.rabbitmq.exchange\":\"" + DLX + "\""))
+                    .withRequestBody(containing("\"messaging.rabbitmq.routing_key\":\"" + DLQ_ROUTING_KEY + "\""))
+                    .withRequestBody(containing("\"messaging.destination\":\"" + DLQ + "\"")));
         });
         cf.destroy();
     }
