@@ -6,11 +6,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * Spring Boot configuration properties for AllStak SDK.
  * Configured via application.properties/yml under the "allstak" prefix.
  *
- * <p>Note: the ingest host is hardcoded inside the SDK and is intentionally
- * not configurable. Customers only need to provide their API key.
- *
  * <pre>
  * allstak.api-key=ask_live_xxx
+ * allstak.host=https://api.dev.allstak.sa
  * allstak.environment=production
  * allstak.release=v1.0.0
  * allstak.debug=false
@@ -26,6 +24,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class AllStakProperties {
 
     private String apiKey;
+    private String host;
     private String environment;
     private String release;
     private boolean debug = false;
@@ -38,6 +37,14 @@ public class AllStakProperties {
     private boolean captureDbQueries = true;
     private boolean captureLogs = true;
     private boolean captureScheduled = true;
+    private boolean captureAsync = true;
+    private boolean captureRabbit = true;
+    private boolean captureKafka = true;
+    private boolean captureCache = true;
+    private boolean captureFeign = true;
+    private boolean captureValidation = true;
+    private boolean captureSecurity = true;
+    private boolean captureRetry = true;
     /** Build distribution tag (e.g. "linux-x86_64"). Optional. */
     private String dist;
     /** Git commit SHA (auto-detected from GIT_COMMIT / VERCEL_GIT_COMMIT_SHA when blank). */
@@ -54,6 +61,8 @@ public class AllStakProperties {
 
     public String getApiKey() { return apiKey; }
     public void setApiKey(String apiKey) { this.apiKey = apiKey; }
+    public String getHost() { return host; }
+    public void setHost(String host) { this.host = host; }
     public String getEnvironment() { return environment; }
     public void setEnvironment(String environment) { this.environment = environment; }
     public String getRelease() { return release; }
@@ -78,4 +87,20 @@ public class AllStakProperties {
     public void setCaptureLogs(boolean captureLogs) { this.captureLogs = captureLogs; }
     public boolean isCaptureScheduled() { return captureScheduled; }
     public void setCaptureScheduled(boolean captureScheduled) { this.captureScheduled = captureScheduled; }
+    public boolean isCaptureAsync() { return captureAsync; }
+    public void setCaptureAsync(boolean captureAsync) { this.captureAsync = captureAsync; }
+    public boolean isCaptureRabbit() { return captureRabbit; }
+    public void setCaptureRabbit(boolean captureRabbit) { this.captureRabbit = captureRabbit; }
+    public boolean isCaptureKafka() { return captureKafka; }
+    public void setCaptureKafka(boolean captureKafka) { this.captureKafka = captureKafka; }
+    public boolean isCaptureCache() { return captureCache; }
+    public void setCaptureCache(boolean captureCache) { this.captureCache = captureCache; }
+    public boolean isCaptureFeign() { return captureFeign; }
+    public void setCaptureFeign(boolean captureFeign) { this.captureFeign = captureFeign; }
+    public boolean isCaptureValidation() { return captureValidation; }
+    public void setCaptureValidation(boolean captureValidation) { this.captureValidation = captureValidation; }
+    public boolean isCaptureSecurity() { return captureSecurity; }
+    public void setCaptureSecurity(boolean captureSecurity) { this.captureSecurity = captureSecurity; }
+    public boolean isCaptureRetry() { return captureRetry; }
+    public void setCaptureRetry(boolean captureRetry) { this.captureRetry = captureRetry; }
 }

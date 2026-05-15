@@ -63,10 +63,12 @@ public final class FlushWorker<T> {
     public void shutdown() {
         running = false;
         try {
-            // Best-effort drain within 5 seconds
-            flush();
+            // Runtime shutdown must be fail-open. Explicit client.flush() is
+            // available for callers that want a best-effort drain, but normal
+            // framework/application shutdown must never wait on AllStak
+            // availability.
             scheduler.shutdown();
-            if (!scheduler.awaitTermination(5, TimeUnit.SECONDS)) {
+            if (!scheduler.awaitTermination(2, TimeUnit.SECONDS)) {
                 scheduler.shutdownNow();
             }
             SdkLogger.debug("Flush worker '{}' shut down", featureName);

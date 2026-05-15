@@ -16,6 +16,7 @@ public class DatabaseQueryItem {
     private String service;
     private String environment;
     private String traceId;
+    private String requestId;
     private String spanId;
     private int rowsAffected;
     private String release;
@@ -36,6 +37,7 @@ public class DatabaseQueryItem {
     public String getService() { return service; }
     public String getEnvironment() { return environment; }
     public String getTraceId() { return traceId; }
+    public String getRequestId() { return requestId; }
     public String getSpanId() { return spanId; }
     public int getRowsAffected() { return rowsAffected; }
     public String getRelease() { return release; }
@@ -55,6 +57,7 @@ public class DatabaseQueryItem {
         public Builder service(String s) { item.service = s; return this; }
         public Builder environment(String e) { item.environment = e; return this; }
         public Builder traceId(String t) { item.traceId = t; return this; }
+        public Builder requestId(String r) { item.requestId = r; return this; }
         public Builder spanId(String s) { item.spanId = s; return this; }
         public Builder rowsAffected(int r) { item.rowsAffected = r; return this; }
         public Builder release(String r) { item.release = r; return this; }

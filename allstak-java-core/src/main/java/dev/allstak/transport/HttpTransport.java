@@ -18,6 +18,7 @@ public final class HttpTransport {
 
     private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(3);
     private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(5);
+    private static final long DEFAULT_CIRCUIT_OPEN_MS = 30_000;
 
     private final HttpClient httpClient;
     private final ObjectMapper objectMapper;
@@ -26,6 +27,7 @@ public final class HttpTransport {
 
     // Set to true when a 401 is received — disables all further sends
     private volatile boolean disabled = false;
+    private volatile long circuitOpenUntilMs = 0;
 
     public HttpTransport(String baseUrl, String apiKey) {
         this.baseUrl = baseUrl;
@@ -55,6 +57,10 @@ public final class HttpTransport {
     public boolean send(String path, Object payload) {
         if (disabled) {
             SdkLogger.debug("SDK is disabled (401 received) — dropping event for {}", path);
+            return false;
+        }
+        if (System.currentTimeMillis() < circuitOpenUntilMs) {
+            SdkLogger.debug("AllStak transport circuit open — dropping event for {}", path);
             return false;
         }
 
@@ -94,6 +100,7 @@ public final class HttpTransport {
                 SdkLogger.debug("Response from {}{}: {} {}", baseUrl, path, status, response.body());
 
                 if (status == 202) {
+                    circuitOpenUntilMs = 0;
                     return true;
                 }
 
@@ -105,6 +112,12 @@ public final class HttpTransport {
 
                 if (RetryPolicy.isClientError(status)) {
                     SdkLogger.debug("Client error {} for {} — dropping event", status, path);
+                    return false;
+                }
+
+                if (status == 429 || status == 503) {
+                    openCircuit(response.headers().firstValue("Retry-After").orElse(null));
+                    SdkLogger.debug("AllStak transport backed off after {} for {}", status, path);
                     return false;
                 }
 
@@ -130,7 +143,20 @@ public final class HttpTransport {
         }
 
         SdkLogger.debug("All {} retry attempts exhausted for {} — discarding event", RetryPolicy.maxAttempts(), path);
+        openCircuit(null);
         return false;
+    }
+
+    private void openCircuit(String retryAfterHeader) {
+        long delayMs = DEFAULT_CIRCUIT_OPEN_MS;
+        if (retryAfterHeader != null && !retryAfterHeader.isBlank()) {
+            try {
+                delayMs = Math.max(1000, Long.parseLong(retryAfterHeader.trim()) * 1000);
+            } catch (NumberFormatException ignored) {
+                delayMs = DEFAULT_CIRCUIT_OPEN_MS;
+            }
+        }
+        circuitOpenUntilMs = System.currentTimeMillis() + delayMs;
     }
 
     public ObjectMapper getObjectMapper() {

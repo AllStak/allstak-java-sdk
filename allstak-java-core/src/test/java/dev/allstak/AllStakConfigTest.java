@@ -23,12 +23,22 @@ class AllStakConfigTest {
     }
 
     @Test
-    void hostIsAlwaysTheStaticIngestEndpoint() {
+    void hostDefaultsToProductionIngestEndpoint() {
         AllStakConfig config = AllStakConfig.builder()
                 .apiKey("test")
                 .build();
 
         assertThat(config.getHost()).isEqualTo(AllStakConfig.INGEST_HOST);
+    }
+
+    @Test
+    void hostCanBeOverriddenForDevOrSelfHostedDeployments() {
+        AllStakConfig config = AllStakConfig.builder()
+                .apiKey("test")
+                .host("https://api.dev.allstak.sa/")
+                .build();
+
+        assertThat(config.getHost()).isEqualTo("https://api.dev.allstak.sa");
     }
 
     @Test

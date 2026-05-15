@@ -4,12 +4,18 @@ import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import dev.allstak.transport.HttpTransport;
 import org.junit.jupiter.api.*;
+import org.springframework.amqp.core.Message;
+import org.springframework.amqp.core.MessageBuilder;
+import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.context.annotation.Bean;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -88,6 +94,15 @@ class AutoInstrumentationIntegrationTest {
     @Autowired
     private ScheduledHitCounter hitCounter;
 
+    @Autowired
+    private RabbitProbe rabbitProbe;
+
+    @Autowired
+    private AsyncProbe asyncProbe;
+
+    @Autowired
+    private RabbitTemplate rabbitTemplate;
+
     @BeforeAll
     static void startServers() {
         ingest = new WireMockServer(wireMockConfig().dynamicPort());
@@ -128,6 +143,10 @@ class AutoInstrumentationIntegrationTest {
         // Disable the servlet filter for this non-web slice; we are only exercising
         // outbound HTTP + scheduled instrumentation here.
         registry.add("allstak.capture-http-requests", () -> "false");
+        // Keep @RabbitListener methods as plain proxied methods in this test; the
+        // SDK instrumentation is under test, not broker container startup.
+        registry.add("spring.rabbitmq.listener.simple.auto-startup", () -> "false");
+        registry.add("spring.rabbitmq.listener.direct.auto-startup", () -> "false");
         registry.add("downstream.url",           () -> "http://localhost:" + downstream.port());
     }
 
@@ -217,6 +236,113 @@ class AutoInstrumentationIntegrationTest {
     }
 
     // ------------------------------------------------------------------ //
+    //  RestTemplate — failure path must capture an outbound event
+    // ------------------------------------------------------------------ //
+    @Test
+    void restTemplate_failurePath_doesNotCrashAndStillRecords() {
+        Throwable thrown = null;
+        try {
+            rawRestTemplate.getForObject("http://127.0.0.1:1/definitely-not-listening", String.class);
+        } catch (Throwable t) {
+            thrown = t;
+        }
+        assertThat(thrown).isNotNull(); // user-visible HTTP failure preserved
+
+        await().atMost(Duration.ofSeconds(3)).untilAsserted(() ->
+                ingest.verify(1, postRequestedFor(urlEqualTo("/ingest/v1/http-requests"))
+                        .withRequestBody(containing("\"direction\":\"outbound\""))
+                        .withRequestBody(containing("\"errorFingerprint\""))));
+    }
+
+    // ------------------------------------------------------------------ //
+    //  RabbitMQ — listener context, spans, and exact exceptions
+    // ------------------------------------------------------------------ //
+    @Test
+    void rabbitListener_successCreatesConsumerSpanWithMessageContext() {
+        Message message = MessageBuilder.withBody("{}".getBytes())
+                .setHeader(AllStakRabbitSupport.HEADER_TRACE_ID, "trace-rabbit-success")
+                .setHeader(AllStakRabbitSupport.HEADER_REQUEST_ID, "req-rabbit-success")
+                .setMessageId("message-rabbit-success")
+                .setReceivedExchange("orders.events")
+                .setReceivedRoutingKey("orders.created")
+                .setRedelivered(false)
+                .build();
+
+        rabbitProbe.handle(message);
+
+        await().atMost(Duration.ofSeconds(3)).untilAsserted(() ->
+                ingest.verify(1, postRequestedFor(urlEqualTo("/ingest/v1/spans"))
+                        .withRequestBody(containing("\"operation\":\"messaging.consumer\""))
+                        .withRequestBody(containing("\"traceId\":\"trace-rabbit-success\""))
+                        .withRequestBody(containing("\"request.id\":\"req-rabbit-success\""))
+                        .withRequestBody(containing("\"messaging.system\":\"rabbitmq\""))
+                        .withRequestBody(containing("\"messaging.rabbitmq.routing_key\":\"orders.created\""))));
+    }
+
+    @Test
+    void rabbitListener_exceptionCreatesConsumerErrorAndRethrows() {
+        Message message = MessageBuilder.withBody("{}".getBytes())
+                .setHeader(AllStakRabbitSupport.HEADER_TRACE_ID, "trace-rabbit-failure")
+                .setHeader(AllStakRabbitSupport.HEADER_REQUEST_ID, "req-rabbit-failure")
+                .setMessageId("message-rabbit-failure")
+                .setReceivedExchange("orders.events")
+                .setReceivedRoutingKey("orders.failed")
+                .setRedelivered(true)
+                .build();
+
+        Throwable thrown = null;
+        try {
+            rabbitProbe.fail(message);
+        } catch (Throwable t) {
+            thrown = t;
+        }
+        assertThat(thrown).isInstanceOf(IllegalStateException.class);
+
+        await().atMost(Duration.ofSeconds(3)).untilAsserted(() -> {
+            ingest.verify(1, postRequestedFor(urlEqualTo("/ingest/v1/errors"))
+                    .withRequestBody(containing("spring.rabbit.listener"))
+                    .withRequestBody(containing("req-rabbit-failure"))
+                    .withRequestBody(containing("rabbit listener boom")));
+            ingest.verify(1, postRequestedFor(urlEqualTo("/ingest/v1/spans"))
+                    .withRequestBody(containing("\"operation\":\"messaging.consumer\""))
+                    .withRequestBody(containing("\"status\":\"error\""))
+                    .withRequestBody(containing("\"traceId\":\"trace-rabbit-failure\""))
+                    .withRequestBody(containing("\"messaging.rabbitmq.redelivered\":\"true\"")));
+        });
+    }
+
+    @Test
+    void rabbitTemplate_sendInjectsHeadersAndCreatesProducerSpan() {
+        Message message = MessageBuilder.withBody("{}".getBytes()).build();
+
+        rabbitTemplate.send("orders.events", "orders.created", message);
+
+        assertThat(message.getMessageProperties().getHeaders())
+                .containsKeys(
+                        AllStakRabbitSupport.HEADER_TRACE_ID,
+                        AllStakRabbitSupport.HEADER_REQUEST_ID,
+                        AllStakRabbitSupport.HEADER_TRACEPARENT);
+        await().atMost(Duration.ofSeconds(3)).untilAsserted(() ->
+                ingest.verify(1, postRequestedFor(urlEqualTo("/ingest/v1/spans"))
+                        .withRequestBody(containing("\"operation\":\"messaging.producer\""))
+                        .withRequestBody(containing("\"messaging.system\":\"rabbitmq\""))
+                        .withRequestBody(containing("\"status\":\"ok\""))));
+    }
+
+    // ------------------------------------------------------------------ //
+    //  @Async — uncaught void-returning method exceptions are captured
+    // ------------------------------------------------------------------ //
+    @Test
+    void asyncMethod_uncaughtExceptionIsCapturedWithoutBlockingCaller() {
+        asyncProbe.failAsync();
+
+        await().atMost(Duration.ofSeconds(3)).untilAsserted(() ->
+                ingest.verify(1, postRequestedFor(urlEqualTo("/ingest/v1/errors"))
+                        .withRequestBody(containing("spring.async"))
+                        .withRequestBody(containing("async boom"))));
+    }
+
+    // ------------------------------------------------------------------ //
     //  @Scheduled — success heartbeat is auto-emitted (no helper calls)
     // ------------------------------------------------------------------ //
     @Test
@@ -252,6 +378,7 @@ class AutoInstrumentationIntegrationTest {
 
     @SpringBootApplication
     @EnableScheduling
+    @EnableAsync
     static class AutoInstrumentedApp {
 
         @Bean
@@ -272,6 +399,21 @@ class AutoInstrumentationIntegrationTest {
         @Bean
         public ScheduledHitCounter scheduledHitCounter() {
             return new ScheduledHitCounter();
+        }
+
+        @Bean
+        public RabbitProbe rabbitProbe() {
+            return new RabbitProbe();
+        }
+
+        @Bean
+        public RabbitTemplate rabbitTemplate() {
+            return new CapturingRabbitTemplate();
+        }
+
+        @Bean
+        public AsyncProbe asyncProbe() {
+            return new AsyncProbe();
         }
     }
 
@@ -298,5 +440,36 @@ class AutoInstrumentationIntegrationTest {
 
         public int getSuccess() { return success.get(); }
         public int getFailure() { return failure.get(); }
+    }
+
+    public static class RabbitProbe {
+        @RabbitListener(queues = "orders.audit")
+        public void handle(Message message) {
+            // no-op; instrumentation should create the consumer span
+        }
+
+        @RabbitListener(queues = "orders.audit")
+        public void fail(Message message) {
+            throw new IllegalStateException("rabbit listener boom");
+        }
+    }
+
+    public static class AsyncProbe {
+        @Async
+        public void failAsync() {
+            throw new IllegalStateException("async boom");
+        }
+    }
+
+    public static class CapturingRabbitTemplate extends RabbitTemplate {
+        @Override
+        public void afterPropertiesSet() {
+            // No broker connection is needed for this instrumentation fixture.
+        }
+
+        @Override
+        public void send(String exchange, String routingKey, Message message) {
+            // no broker needed; RabbitTemplate post-processor instrumentation is the subject.
+        }
     }
 }

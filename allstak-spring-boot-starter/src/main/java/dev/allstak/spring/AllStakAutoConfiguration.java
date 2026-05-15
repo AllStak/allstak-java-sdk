@@ -29,12 +29,16 @@ public class AllStakAutoConfiguration {
     public AllStakConfig allStakConfig(AllStakProperties props) {
         return AllStakConfig.builder()
                 .apiKey(props.getApiKey())
+                .host(props.getHost())
                 .environment(props.getEnvironment())
                 .release(props.getRelease())
                 .debug(props.isDebug())
                 .flushIntervalMs(props.getFlushIntervalMs())
                 .bufferSize(props.getBufferSize())
                 .serviceName(props.getServiceName())
+                .dist(props.getDist())
+                .commitSha(props.getCommitSha())
+                .branch(props.getBranch())
                 .build();
     }
 
@@ -72,8 +76,8 @@ public class AllStakAutoConfiguration {
 
     @Bean
     @ConditionalOnProperty(prefix = "allstak", name = "capture-exceptions", havingValue = "true", matchIfMissing = true)
-    public AllStakExceptionHandler allStakExceptionHandler(AllStakClient client) {
-        return new AllStakExceptionHandler(client);
+    public AllStakExceptionHandler allStakExceptionHandler(AllStakClient client, AllStakProperties props) {
+        return new AllStakExceptionHandler(client, props.isCaptureValidation());
     }
 
     @Bean
@@ -129,6 +133,136 @@ public class AllStakAutoConfiguration {
         @ConditionalOnMissingBean
         public AllStakWebClientCustomizer allStakWebClientCustomizer(AllStakWebClientFilter filter) {
             return new AllStakWebClientCustomizer(filter);
+        }
+    }
+
+    @org.springframework.context.annotation.Configuration
+    @ConditionalOnClass(name = "org.springframework.scheduling.annotation.AsyncConfigurer")
+    @ConditionalOnProperty(prefix = "allstak", name = "capture-async", havingValue = "true", matchIfMissing = true)
+    public static class AsyncAutoConfiguration {
+
+        @Bean
+        @ConditionalOnMissingBean(org.springframework.scheduling.annotation.AsyncConfigurer.class)
+        public AllStakAsyncConfigurer allStakAsyncConfigurer(AllStakClient client) {
+            return new AllStakAsyncConfigurer(client);
+        }
+    }
+
+    @org.springframework.context.annotation.Configuration
+    @ConditionalOnClass(name = {
+        "org.springframework.amqp.rabbit.annotation.RabbitListener",
+        "org.springframework.amqp.rabbit.core.RabbitTemplate"
+    })
+    @ConditionalOnProperty(prefix = "allstak", name = "capture-rabbit", havingValue = "true", matchIfMissing = true)
+    public static class RabbitAutoConfiguration {
+
+        @Bean
+        @ConditionalOnMissingBean
+        public static AllStakRabbitListenerPostProcessor allStakRabbitListenerPostProcessor(AllStakClient client) {
+            return new AllStakRabbitListenerPostProcessor(client);
+        }
+
+        @Bean
+        @ConditionalOnMissingBean
+        public static AllStakRabbitTemplatePostProcessor allStakRabbitTemplatePostProcessor(AllStakClient client) {
+            return new AllStakRabbitTemplatePostProcessor(client);
+        }
+    }
+
+    @org.springframework.context.annotation.Configuration
+    @ConditionalOnClass(name = {
+        "org.springframework.kafka.annotation.KafkaListener",
+        "org.springframework.kafka.core.KafkaTemplate"
+    })
+    @ConditionalOnProperty(prefix = "allstak", name = "capture-kafka", havingValue = "true", matchIfMissing = true)
+    public static class KafkaAutoConfiguration {
+
+        @Bean
+        @ConditionalOnMissingBean
+        public static AllStakKafkaListenerPostProcessor allStakKafkaListenerPostProcessor(AllStakClient client) {
+            return new AllStakKafkaListenerPostProcessor(client);
+        }
+
+        @Bean
+        @ConditionalOnMissingBean
+        public static AllStakKafkaTemplatePostProcessor allStakKafkaTemplatePostProcessor(AllStakClient client) {
+            return new AllStakKafkaTemplatePostProcessor(client);
+        }
+    }
+
+    @org.springframework.context.annotation.Configuration
+    @ConditionalOnClass(name = "org.springframework.cache.Cache")
+    @ConditionalOnProperty(prefix = "allstak", name = "capture-cache", havingValue = "true", matchIfMissing = true)
+    public static class CacheAutoConfiguration {
+
+        @Bean
+        @ConditionalOnMissingBean
+        public static AllStakCacheManagerPostProcessor allStakCacheManagerPostProcessor(AllStakClient client) {
+            return new AllStakCacheManagerPostProcessor(client);
+        }
+    }
+
+    @org.springframework.context.annotation.Configuration
+    @ConditionalOnClass(name = "org.springframework.data.redis.core.RedisTemplate")
+    @ConditionalOnProperty(prefix = "allstak", name = "capture-cache", havingValue = "true", matchIfMissing = true)
+    public static class RedisAutoConfiguration {
+
+        @Bean
+        @ConditionalOnMissingBean
+        public static AllStakRedisTemplatePostProcessor allStakRedisTemplatePostProcessor(AllStakClient client) {
+            return new AllStakRedisTemplatePostProcessor(client);
+        }
+    }
+
+    @org.springframework.context.annotation.Configuration
+    @ConditionalOnClass(name = "feign.Client")
+    @ConditionalOnProperty(prefix = "allstak", name = "capture-feign", havingValue = "true", matchIfMissing = true)
+    public static class FeignAutoConfiguration {
+
+        @Bean
+        @ConditionalOnMissingBean
+        public AllStakFeignRequestInterceptor allStakFeignRequestInterceptor() {
+            return new AllStakFeignRequestInterceptor();
+        }
+
+        @Bean
+        @ConditionalOnMissingBean
+        public static AllStakFeignClientPostProcessor allStakFeignClientPostProcessor(AllStakClient client) {
+            return new AllStakFeignClientPostProcessor(client);
+        }
+
+        @Bean
+        @ConditionalOnClass(name = "feign.Capability")
+        @ConditionalOnMissingBean
+        public AllStakFeignCapability allStakFeignCapability(AllStakClient client) {
+            return new AllStakFeignCapability(client);
+        }
+    }
+
+    @org.springframework.context.annotation.Configuration
+    @ConditionalOnClass(name = {
+        "org.springframework.context.ApplicationEvent",
+        "org.springframework.security.authentication.event.AbstractAuthenticationFailureEvent"
+    })
+    @ConditionalOnProperty(prefix = "allstak", name = "capture-security", havingValue = "true", matchIfMissing = true)
+    public static class SecurityAutoConfiguration {
+
+        @Bean
+        @ConditionalOnMissingBean
+        public AllStakSecurityEventListener allStakSecurityEventListener(AllStakClient client) {
+            return new AllStakSecurityEventListener(client);
+        }
+    }
+
+    @org.springframework.context.annotation.Configuration
+    @ConditionalOnClass(name = "org.springframework.retry.annotation.Retryable")
+    @ConditionalOnProperty(prefix = "allstak", name = "capture-retry", havingValue = "true", matchIfMissing = true)
+    public static class RetryAutoConfiguration {
+
+        @Bean
+        @ConditionalOnMissingBean
+        public static AllStakRetryPostProcessor allStakRetryPostProcessor(AllStakClient client) {
+            return new AllStakRetryPostProcessor(client);
         }
     }
 

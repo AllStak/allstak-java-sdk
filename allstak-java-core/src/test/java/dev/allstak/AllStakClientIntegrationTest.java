@@ -68,18 +68,19 @@ class AllStakClientIntegrationTest {
     }
 
     // =========================================================================
-    // Error capture — immediate send
+    // Error capture — queued fail-open send
     // =========================================================================
 
     @Test
     void captureException_sendsImmediately() {
         client.captureException(new RuntimeException("Test error"));
 
-        wireMock.verify(1, postRequestedFor(urlEqualTo("/ingest/v1/errors"))
-                .withRequestBody(containing("\"exceptionClass\":\"java.lang.RuntimeException\""))
-                .withRequestBody(containing("\"message\":\"Test error\""))
-                .withRequestBody(containing("\"environment\":\"test\""))
-                .withRequestBody(containing("\"release\":\"v0.0.1-test\"")));
+        await().atMost(Duration.ofSeconds(3)).untilAsserted(() ->
+                wireMock.verify(1, postRequestedFor(urlEqualTo("/ingest/v1/errors"))
+                        .withRequestBody(containing("\"exceptionClass\":\"java.lang.RuntimeException\""))
+                        .withRequestBody(containing("\"message\":\"Test error\""))
+                        .withRequestBody(containing("\"environment\":\"test\""))
+                        .withRequestBody(containing("\"release\":\"v0.0.1-test\""))));
     }
 
     @Test
@@ -88,12 +89,13 @@ class AllStakClientIntegrationTest {
         client.captureException(new IllegalStateException("Bad state"),
                 Map.of("component", "OrderProcessor", "orderId", "ORD-99"));
 
-        wireMock.verify(postRequestedFor(urlEqualTo("/ingest/v1/errors"))
-                .withRequestBody(containing("\"exceptionClass\":\"java.lang.IllegalStateException\""))
-                .withRequestBody(containing("\"id\":\"user-42\""))
-                .withRequestBody(containing("\"email\":\"user@test.com\""))
-                .withRequestBody(containing("\"component\":\"OrderProcessor\""))
-                .withRequestBody(containing("\"orderId\":\"ORD-99\"")));
+        await().atMost(Duration.ofSeconds(3)).untilAsserted(() ->
+                wireMock.verify(postRequestedFor(urlEqualTo("/ingest/v1/errors"))
+                        .withRequestBody(containing("\"exceptionClass\":\"java.lang.IllegalStateException\""))
+                        .withRequestBody(containing("\"id\":\"user-42\""))
+                        .withRequestBody(containing("\"email\":\"user@test.com\""))
+                        .withRequestBody(containing("\"component\":\"OrderProcessor\""))
+                        .withRequestBody(containing("\"orderId\":\"ORD-99\""))));
     }
 
     @Test
@@ -104,9 +106,10 @@ class AllStakClientIntegrationTest {
             client.captureException(e);
         }
 
-        wireMock.verify(postRequestedFor(urlEqualTo("/ingest/v1/errors"))
-                .withRequestBody(containing("\"stackTrace\":["))
-                .withRequestBody(containing("AllStakClientIntegrationTest")));
+        await().atMost(Duration.ofSeconds(3)).untilAsserted(() ->
+                wireMock.verify(postRequestedFor(urlEqualTo("/ingest/v1/errors"))
+                        .withRequestBody(containing("\"stackTrace\":["))
+                        .withRequestBody(containing("AllStakClientIntegrationTest"))));
     }
 
     @Test
@@ -114,10 +117,38 @@ class AllStakClientIntegrationTest {
         client.captureException(new RuntimeException("err"),
                 Map.of("password", "secret123", "token", "jwt-xxx", "orderId", "ORD-1"));
 
-        wireMock.verify(postRequestedFor(urlEqualTo("/ingest/v1/errors"))
-                .withRequestBody(containing("\"password\":\"[MASKED]\""))
-                .withRequestBody(containing("\"token\":\"[MASKED]\""))
-                .withRequestBody(containing("\"orderId\":\"ORD-1\"")));
+        await().atMost(Duration.ofSeconds(3)).untilAsserted(() ->
+                wireMock.verify(postRequestedFor(urlEqualTo("/ingest/v1/errors"))
+                        .withRequestBody(containing("\"password\":\"[MASKED]\""))
+                        .withRequestBody(containing("\"token\":\"[MASKED]\""))
+                        .withRequestBody(containing("\"orderId\":\"ORD-1\""))));
+    }
+
+    @Test
+    void captureException_returnsFastWhenIngestIsSlow() {
+        wireMock.resetAll();
+        wireMock.stubFor(post(urlEqualTo("/ingest/v1/errors"))
+                .willReturn(aResponse().withStatus(503).withFixedDelay(1500)));
+
+        long started = System.nanoTime();
+        client.captureException(new RuntimeException("slow allstak"));
+        long elapsedMs = Duration.ofNanos(System.nanoTime() - started).toMillis();
+
+        assertThat(elapsedMs).isLessThan(100);
+    }
+
+    @Test
+    void finishJob_returnsFastWhenIngestIsSlow() {
+        wireMock.resetAll();
+        wireMock.stubFor(post(urlEqualTo("/ingest/v1/heartbeat"))
+                .willReturn(aResponse().withStatus(503).withFixedDelay(1500)));
+
+        JobHandle handle = client.startJob("nightly");
+        long started = System.nanoTime();
+        client.finishJob(handle, "success");
+        long elapsedMs = Duration.ofNanos(System.nanoTime() - started).toMillis();
+
+        assertThat(elapsedMs).isLessThan(100);
     }
 
     // =========================================================================
@@ -221,7 +252,7 @@ class AllStakClientIntegrationTest {
     }
 
     // =========================================================================
-    // Cron job monitoring — immediate send
+    // Cron job monitoring — async fail-open send
     // =========================================================================
 
     @Test
@@ -230,10 +261,11 @@ class AllStakClientIntegrationTest {
         Thread.sleep(50);
         client.finishJob(handle, "success", "Processed 42 records");
 
-        wireMock.verify(postRequestedFor(urlEqualTo("/ingest/v1/heartbeat"))
-                .withRequestBody(containing("\"slug\":\"daily-report\""))
-                .withRequestBody(containing("\"status\":\"success\""))
-                .withRequestBody(containing("\"message\":\"Processed 42 records\"")));
+        await().atMost(Duration.ofSeconds(3)).untilAsserted(() ->
+                wireMock.verify(postRequestedFor(urlEqualTo("/ingest/v1/heartbeat"))
+                        .withRequestBody(containing("\"slug\":\"daily-report\""))
+                        .withRequestBody(containing("\"status\":\"success\""))
+                        .withRequestBody(containing("\"message\":\"Processed 42 records\""))));
     }
 
     @Test
@@ -241,9 +273,10 @@ class AllStakClientIntegrationTest {
         JobHandle handle = client.startJob("payment-sync");
         client.finishJob(handle, "FAILED", "DB connection refused");
 
-        wireMock.verify(postRequestedFor(urlEqualTo("/ingest/v1/heartbeat"))
-                .withRequestBody(containing("\"status\":\"failed\"")) // normalized to lowercase
-                .withRequestBody(containing("\"slug\":\"payment-sync\"")));
+        await().atMost(Duration.ofSeconds(3)).untilAsserted(() ->
+                wireMock.verify(postRequestedFor(urlEqualTo("/ingest/v1/heartbeat"))
+                        .withRequestBody(containing("\"status\":\"failed\"")) // normalized to lowercase
+                        .withRequestBody(containing("\"slug\":\"payment-sync\""))));
     }
 
     // =========================================================================
@@ -264,12 +297,18 @@ class AllStakClientIntegrationTest {
     }
 
     @Test
-    void shutdown_drainsBuffers() {
+    void shutdown_doesNotDrainOrBlockOnTelemetry() {
+        wireMock.resetAll();
+        wireMock.stubFor(post(urlPathMatching("/ingest/v1/.*"))
+                .willReturn(aResponse().withStatus(503).withFixedDelay(1500)));
+
         client.captureLog("info", "pre-shutdown log");
+        long started = System.nanoTime();
         client.shutdown();
 
-        // After shutdown, the log should have been flushed
-        wireMock.verify(1, postRequestedFor(urlEqualTo("/ingest/v1/logs")));
+        org.assertj.core.api.Assertions.assertThat(java.time.Duration.ofNanos(System.nanoTime() - started))
+                .as("shutdown must not drain through unavailable AllStak ingest")
+                .isLessThan(java.time.Duration.ofMillis(500));
     }
 
     @Test
@@ -294,7 +333,8 @@ class AllStakClientIntegrationTest {
         client.captureException(new RuntimeException("trigger 401"));
 
         // Transport is now disabled
-        assertThat(client.getTransport().isDisabled()).isTrue();
+        await().atMost(Duration.ofSeconds(3)).untilAsserted(() ->
+                assertThat(client.getTransport().isDisabled()).isTrue());
 
         // Subsequent operations should not send any HTTP requests
         wireMock.resetRequests();

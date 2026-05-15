@@ -20,29 +20,41 @@ public final class RequestContext {
     private final Integer statusCode;
     private final String userAgent;
     private final String traceId;
+    private final String requestId;
 
     private RequestContext(String method, String path, String host,
-                           Integer statusCode, String userAgent, String traceId) {
+                           Integer statusCode, String userAgent, String traceId, String requestId) {
         this.method = method;
         this.path = path;
         this.host = host;
         this.statusCode = statusCode;
         this.userAgent = userAgent;
         this.traceId = traceId;
+        this.requestId = requestId;
     }
 
     public static RequestContext of(String method, String path, String host, String traceId) {
-        return new RequestContext(method, path, host, null, null, traceId);
+        return new RequestContext(method, path, host, null, null, traceId, null);
     }
 
     public static RequestContext of(String method, String path, String host,
                                     String userAgent, String traceId) {
-        return new RequestContext(method, path, host, null, userAgent, traceId);
+        return new RequestContext(method, path, host, null, userAgent, traceId, null);
+    }
+
+    public static RequestContext of(String method, String path, String host,
+                                    String userAgent, String traceId, String requestId) {
+        return new RequestContext(method, path, host, null, userAgent, traceId, requestId);
     }
 
     public static RequestContext of(String method, String path, String host,
                                     Integer statusCode, String userAgent, String traceId) {
-        return new RequestContext(method, path, host, statusCode, userAgent, traceId);
+        return new RequestContext(method, path, host, statusCode, userAgent, traceId, null);
+    }
+
+    public static RequestContext of(String method, String path, String host,
+                                    Integer statusCode, String userAgent, String traceId, String requestId) {
+        return new RequestContext(method, path, host, statusCode, userAgent, traceId, requestId);
     }
 
     public String getMethod() { return method; }
@@ -54,4 +66,7 @@ public final class RequestContext {
     /** Not serialized — used internally to copy onto ErrorEvent.traceId. */
     @JsonIgnore
     public String getTraceId() { return traceId; }
+
+    @JsonIgnore
+    public String getRequestId() { return requestId; }
 }

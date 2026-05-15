@@ -47,7 +47,10 @@ class SampleAppIntegrationTest {
         wireMock = new WireMockServer(wireMockConfig().dynamicPort());
         wireMock.start();
 
-        // Stub all ingest endpoints
+        stubIngestAccepted();
+    }
+
+    private static void stubIngestAccepted() {
         wireMock.stubFor(WireMock.post(urlPathMatching("/ingest/v1/.*"))
                 .willReturn(aResponse().withStatus(202)
                         .withBody("{\"success\":true,\"data\":{\"id\":\"test-uuid\"}}")));
@@ -60,7 +63,8 @@ class SampleAppIntegrationTest {
 
     @BeforeEach
     void resetWireMock() {
-        wireMock.resetRequests();
+        wireMock.resetAll();
+        stubIngestAccepted();
     }
 
     @DynamicPropertySource

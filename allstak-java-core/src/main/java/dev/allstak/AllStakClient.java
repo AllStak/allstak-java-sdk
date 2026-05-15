@@ -40,13 +40,19 @@ public final class AllStakClient {
 
     // Buffers
     private final RingBuffer<LogEvent> logBuffer;
+    private final RingBuffer<ErrorEvent> errorBuffer;
     private final RingBuffer<HttpRequestItem> httpBuffer;
+    private final RingBuffer<HeartbeatEvent> heartbeatBuffer;
+    private final RingBuffer<Map<String, Object>> spanBuffer;
     private final RingBuffer<Breadcrumb> breadcrumbBuffer;
     private final RingBuffer<DatabaseQueryItem> dbQueryBuffer;
 
     // Flush workers
     private final FlushWorker<LogEvent> logFlusher;
+    private final FlushWorker<ErrorEvent> errorFlusher;
     private final FlushWorker<HttpRequestItem> httpFlusher;
+    private final FlushWorker<HeartbeatEvent> heartbeatFlusher;
+    private final FlushWorker<Map<String, Object>> spanFlusher;
     private final FlushWorker<DatabaseQueryItem> dbQueryFlusher;
 
     // User context (set globally)
@@ -66,7 +72,10 @@ public final class AllStakClient {
         SdkLogger.setDebug(config.isDebug());
 
         this.logBuffer = new RingBuffer<>(config.getBufferSize());
+        this.errorBuffer = new RingBuffer<>(config.getBufferSize());
         this.httpBuffer = new RingBuffer<>(config.getBufferSize());
+        this.heartbeatBuffer = new RingBuffer<>(config.getBufferSize());
+        this.spanBuffer = new RingBuffer<>(config.getBufferSize());
         this.breadcrumbBuffer = new RingBuffer<>(BREADCRUMB_BUFFER_SIZE);
         this.dbQueryBuffer = new RingBuffer<>(config.getBufferSize());
 
@@ -78,11 +87,34 @@ public final class AllStakClient {
             return true;
         });
 
+        // Error flush worker — errors are urgent, but still fail-open.
+        this.errorFlusher = new FlushWorker<>("errors", errorBuffer, errors -> {
+            for (ErrorEvent event : errors) {
+                transport.send(PATH_ERRORS, event);
+            }
+            return true;
+        });
+
         // HTTP request flush worker — sends in batches of up to 100
         this.httpFlusher = new FlushWorker<>("http-requests", httpBuffer, items -> {
             for (int i = 0; i < items.size(); i += HTTP_BATCH_MAX) {
                 List<HttpRequestItem> batch = items.subList(i, Math.min(i + HTTP_BATCH_MAX, items.size()));
                 transport.send(PATH_HTTP_REQUESTS, new HttpRequestBatch(batch));
+            }
+            return true;
+        });
+
+        // Heartbeat flush worker — never block cron/job code on AllStak.
+        this.heartbeatFlusher = new FlushWorker<>("heartbeats", heartbeatBuffer, heartbeats -> {
+            for (HeartbeatEvent event : heartbeats) {
+                transport.send(PATH_HEARTBEAT, event);
+            }
+            return true;
+        });
+
+        this.spanFlusher = new FlushWorker<>("spans", spanBuffer, spans -> {
+            for (Map<String, Object> span : spans) {
+                transport.send(PATH_SPANS, Map.of("spans", List.of(span)));
             }
             return true;
         });
@@ -98,7 +130,10 @@ public final class AllStakClient {
 
         // Start flush workers
         logFlusher.start(config.getFlushIntervalMs());
+        errorFlusher.start(config.getFlushIntervalMs());
         httpFlusher.start(config.getFlushIntervalMs());
+        heartbeatFlusher.start(config.getFlushIntervalMs());
+        spanFlusher.start(config.getFlushIntervalMs());
         dbQueryFlusher.start(config.getFlushIntervalMs());
 
         SdkLogger.debug("AllStak SDK initialized — host={}, env={}, release={}",
@@ -137,6 +172,7 @@ public final class AllStakClient {
             // Attach request context if available on this thread
             RequestContext reqCtx = currentRequestContext.get();
             String traceId = reqCtx != null ? reqCtx.getTraceId() : null;
+            String requestId = reqCtx != null ? reqCtx.getRequestId() : null;
             RequestContext eventReqCtx = reqCtx != null
                     ? RequestContext.of(
                             reqCtx.getMethod(),
@@ -144,7 +180,8 @@ public final class AllStakClient {
                             reqCtx.getHost(),
                             reqCtx.getStatusCode(),
                             reqCtx.getUserAgent(),
-                            traceId)
+                            traceId,
+                            requestId)
                     : null;
 
             // Drain breadcrumbs and attach to error event
@@ -178,6 +215,7 @@ public final class AllStakClient {
                     currentUser,
                     maskedMetadata,
                     traceId,
+                    requestId,
                     eventReqCtx,
                     eventBreadcrumbs,
                     config.getPlatform(),
@@ -187,8 +225,8 @@ public final class AllStakClient {
                     frames.isEmpty() ? null : frames
             );
 
-            // Errors are sent immediately — no buffering
-            transport.send(PATH_ERRORS, event);
+            errorBuffer.add(event);
+            errorFlusher.checkCapacityFlush();
         } catch (Exception e) {
             SdkLogger.debug("Failed to capture exception: {}", e.getMessage());
         }
@@ -255,6 +293,7 @@ public final class AllStakClient {
             // Strip query parameters from path, preserve all other fields
             HttpRequestItem sanitized = HttpRequestItem.builder()
                     .traceId(item.getTraceId())
+                    .requestId(item.getRequestId())
                     .spanId(item.getSpanId())
                     .parentSpanId(item.getParentSpanId())
                     .direction(item.getDirection())
@@ -272,6 +311,10 @@ public final class AllStakClient {
                     .responseHeaders(item.getResponseHeaders())
                     .requestBody(item.getRequestBody())
                     .responseBody(item.getResponseBody())
+                    .requestBodyCaptureStatus(item.getRequestBodyCaptureStatus())
+                    .responseBodyCaptureStatus(item.getResponseBodyCaptureStatus())
+                    .requestBodyCaptureReason(item.getRequestBodyCaptureReason())
+                    .responseBodyCaptureReason(item.getResponseBodyCaptureReason())
                     // Default release/environment to config-level values when
                     // the caller didn't set them explicitly on the item. This
                     // is what makes auto-instrumented inbound requests carry
@@ -354,8 +397,8 @@ public final class AllStakClient {
                     config.getRelease()
             );
 
-            // Heartbeats are sent immediately
-            transport.send(PATH_HEARTBEAT, event);
+            heartbeatBuffer.add(event);
+            heartbeatFlusher.checkCapacityFlush();
         } catch (Exception e) {
             SdkLogger.debug("Failed to send heartbeat: {}", e.getMessage());
         }
@@ -429,8 +472,8 @@ public final class AllStakClient {
             span.put("tags", tags != null ? tags : Map.of());
             span.put("data", "");
 
-            Map<String, Object> payload = Map.of("spans", List.of(span));
-            transport.send(PATH_SPANS, payload);
+            spanBuffer.add(span);
+            spanFlusher.checkCapacityFlush();
         } catch (Exception e) {
             SdkLogger.debug("Failed to capture span: {}", e.getMessage());
         }
@@ -443,7 +486,10 @@ public final class AllStakClient {
     public void flush() {
         try {
             logFlusher.flush();
+            errorFlusher.flush();
             httpFlusher.flush();
+            heartbeatFlusher.flush();
+            spanFlusher.flush();
             dbQueryFlusher.flush();
         } catch (Exception e) {
             SdkLogger.debug("Flush failed: {}", e.getMessage());
@@ -461,7 +507,10 @@ public final class AllStakClient {
         if (shutdown.compareAndSet(false, true)) {
             SdkLogger.debug("AllStak SDK shutting down...");
             logFlusher.shutdown();
+            errorFlusher.shutdown();
             httpFlusher.shutdown();
+            heartbeatFlusher.shutdown();
+            spanFlusher.shutdown();
             dbQueryFlusher.shutdown();
             SdkLogger.debug("AllStak SDK shut down complete");
         }

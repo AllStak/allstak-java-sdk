@@ -37,7 +37,28 @@ public class AllStakRestTemplateInterceptor implements ClientHttpRequestIntercep
         try {
             response = execution.execute(request, body);
         } catch (IOException e) {
-            // Record failed outbound request
+            // Record failed outbound request. The original IOException is
+            // rethrown so user code observes exactly the same RestTemplate
+            // behavior, but AllStak still has dependency-failure evidence.
+            long durationMs = System.currentTimeMillis() - start;
+            String spanId = UUID.randomUUID().toString().substring(0, 16);
+            HttpRequestItem item = HttpRequestItem.builder()
+                    .traceId(traceId != null ? traceId : UUID.randomUUID().toString())
+                    .spanId(spanId)
+                    .direction("outbound")
+                    .method(request.getMethod().name())
+                    .host(request.getURI().getHost())
+                    .path(request.getURI().getPath())
+                    .statusCode(0)
+                    .durationMs(durationMs)
+                    .requestSize(body != null ? body.length : 0)
+                    .responseSize(0)
+                    .errorFingerprint(e.getClass().getName())
+                    .timestamp(Instant.now().toString())
+                    .environment(client.getConfig().getEnvironment())
+                    .release(client.getConfig().getRelease())
+                    .build();
+            client.captureHttpRequest(item);
             if (client.getConfig().isAutoBreadcrumbs()) {
                 client.addBreadcrumb("http",
                         request.getMethod() + " " + request.getURI().getHost() + request.getURI().getPath() + " -> failed",

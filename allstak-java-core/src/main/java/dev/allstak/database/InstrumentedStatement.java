@@ -146,11 +146,13 @@ class InstrumentedStatement implements Statement {
         try {
             // Get trace context for correlation
             String traceId = "";
+            String requestId = "";
             String spanId = "";
             try {
                 var reqCtx = AllStakClient.getRequestContext();
                 if (reqCtx != null) {
                     traceId = reqCtx.getTraceId() != null ? reqCtx.getTraceId() : "";
+                    requestId = reqCtx.getRequestId() != null ? reqCtx.getRequestId() : "";
                     // Generate a span ID for this DB query
                     spanId = java.util.UUID.randomUUID().toString().replace("-", "").substring(0, 16);
                 }
@@ -167,6 +169,7 @@ class InstrumentedStatement implements Statement {
                     .databaseName(databaseName)
                     .databaseType(databaseType)
                     .traceId(traceId)
+                    .requestId(requestId)
                     .spanId(spanId)
                     .rowsAffected(rowsAffected)
                     .build());

@@ -1,5 +1,6 @@
 target/
 *.class
 **/surefire-reports/
+.DS_Store
 .idea/
 *.iml

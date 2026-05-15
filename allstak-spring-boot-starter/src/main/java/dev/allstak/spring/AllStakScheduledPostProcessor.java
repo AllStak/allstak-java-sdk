@@ -1,6 +1,5 @@
 package dev.allstak.spring;
 
-import dev.allstak.AllStak;
 import dev.allstak.AllStakClient;
 import dev.allstak.internal.SdkLogger;
 import dev.allstak.model.JobHandle;
@@ -46,8 +45,8 @@ public class AllStakScheduledPostProcessor implements BeanPostProcessor, Ordered
 
     /**
      * Marker set by the auto-wrapper while a scheduled method is running, so
-     * manually placed {@link AllStak#startJob(String)} calls inside the same
-     * method do not create duplicate heartbeats.
+     * manually placed facade job helpers inside the same method do not create
+     * duplicate heartbeats.
      */
     static final ThreadLocal<Boolean> INSIDE_AUTO_JOB = ThreadLocal.withInitial(() -> false);
 
@@ -88,18 +87,18 @@ public class AllStakScheduledPostProcessor implements BeanPostProcessor, Ordered
     }
 
     private Object runWithHeartbeat(String slug, MethodInvocation invocation) throws Throwable {
-        JobHandle handle = AllStak.startJob(slug);
+        JobHandle handle = client.startJob(slug);
         boolean previous = INSIDE_AUTO_JOB.get();
         INSIDE_AUTO_JOB.set(true);
         try {
             Object result = invocation.proceed();
             try {
-                AllStak.finishJob(handle, "success");
+                client.finishJob(handle, "success");
             } catch (Exception ignored) { /* never raise into host */ }
             return result;
         } catch (Throwable t) {
             try {
-                AllStak.finishJob(handle, "failed", safeMessage(t));
+                client.finishJob(handle, "failed", safeMessage(t));
             } catch (Exception ignored) { /* never raise into host */ }
             throw t;
         } finally {

@@ -1,0 +1,19 @@
+server:
+  port: 8081
+
+spring:
+  datasource:
+    url: jdbc:h2:mem:demodb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+# AllStak SDK configuration
+# Set ALLSTAK_API_KEY in your environment before running.
+allstak:
+  api-key: ${ALLSTAK_API_KEY:}
+  host: ${ALLSTAK_HOST:https://api.allstak.sa}
+  environment: ${ALLSTAK_ENVIRONMENT:development}
+  release: ${ALLSTAK_RELEASE:1.0.0-demo}
+  service-name: spring-boot-demo
+  debug: ${ALLSTAK_DEBUG:false}
