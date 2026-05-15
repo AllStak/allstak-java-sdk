@@ -19,7 +19,7 @@ public final class AllStakConfig {
     public static final String INGEST_HOST = "https://api.allstak.sa";
     /** Hardcoded SDK identity. Sent on the wire as {@code sdk.name} / {@code sdk.version}. */
     public static final String SDK_NAME = "allstak-java";
-    public static final String SDK_VERSION = "0.1.2";
+    public static final String SDK_VERSION = "0.1.3";
 
     private final String apiKey;
     private final String host;

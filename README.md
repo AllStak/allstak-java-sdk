@@ -32,7 +32,7 @@ View captured events live at [app.allstak.sa](https://app.allstak.sa).
 <dependency>
   <groupId>sa.allstak</groupId>
   <artifactId>allstak-spring-boot-starter</artifactId>
-  <version>0.1.2</version>
+  <version>0.1.3</version>
 </dependency>
 ```
 
@@ -42,16 +42,16 @@ Plain Java (no Spring):
 <dependency>
   <groupId>sa.allstak</groupId>
   <artifactId>allstak-java-core</artifactId>
-  <version>0.1.2</version>
+  <version>0.1.3</version>
 </dependency>
 ```
 
 ### Gradle
 
 ```groovy
-implementation 'sa.allstak:allstak-spring-boot-starter:0.1.2'
+implementation 'sa.allstak:allstak-spring-boot-starter:0.1.3'
 // or, without Spring:
-implementation 'sa.allstak:allstak-java-core:0.1.2'
+implementation 'sa.allstak:allstak-java-core:0.1.3'
 ```
 
 ## Quick Start

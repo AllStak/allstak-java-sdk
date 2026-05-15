@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.2 - 2026-05-15
+## 0.1.3 - 2026-05-15
 
 - Expanded Spring Boot auto-instrumentation for async, cache, Feign, Kafka, RabbitMQ, retry, security, and Redis flows.
 - Added configurable ingest host and HTTP body-capture controls.

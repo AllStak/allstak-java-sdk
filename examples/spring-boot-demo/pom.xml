@@ -18,7 +18,7 @@
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <spring-boot.version>3.2.4</spring-boot.version>
-        <allstak.version>0.1.2</allstak.version>
+        <allstak.version>0.1.3</allstak.version>
     </properties>
 
     <dependencies>

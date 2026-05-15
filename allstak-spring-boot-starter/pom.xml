@@ -7,12 +7,12 @@
     <parent>
         <groupId>sa.allstak</groupId>
         <artifactId>allstak-java-parent</artifactId>
-        <version>0.1.2</version>
+        <version>0.1.3</version>
     </parent>
 
     <groupId>sa.allstak</groupId>
     <artifactId>allstak-spring-boot-starter</artifactId>
-    <version>0.1.2</version>
+    <version>0.1.3</version>
     <name>AllStak Java SDK - Spring Boot Starter</name>
     <description>Spring Boot auto-configuration for AllStak SDK</description>
     <url>https://github.com/allstak-io/allstak-java-sdk</url>
