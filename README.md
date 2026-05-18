@@ -171,3 +171,58 @@ Production endpoint: `https://api.allstak.sa`. Override with `allstak.host`,
 ## License
 
 MIT © AllStak
+
+## Production readiness
+
+### Install
+
+`Maven coordinates: sa.allstak:allstak-java-core and sa.allstak:allstak-spring-boot-starter`
+
+### Quick Start
+
+Use the minimal setup shown above in this README, set an AllStak API key through environment/configuration, and verify telemetry in a non-production project before enabling it for users. Do not hardcode API keys in source code.
+
+### Configuration
+
+Configure the API key, ingest host, environment, release, service name, sample rates, and optional capture settings explicitly for each deployment. Default production host is `https://api.allstak.sa` unless this SDK documents otherwise.
+
+### Environment Variables
+
+Prefer environment variables for secrets and deployment-specific values: `ALLSTAK_API_KEY`, `ALLSTAK_HOST`, `ALLSTAK_ENVIRONMENT`, `ALLSTAK_RELEASE`, and SDK-specific build/source-map tokens where applicable. Client-side frameworks must only expose public client keys using their framework-specific public env var conventions.
+
+### Framework Compatibility
+
+Java 17+, Spring Boot 3.x. Local Maven verification passed, but Maven Central publication and live dashboard proof are pending.
+
+### What Data Is Captured
+
+Depending on the SDK and enabled integrations, AllStak can capture exceptions, logs, breadcrumbs, HTTP request metadata, traces/spans, release/environment tags, user context supplied by the application, cron/job heartbeat status, and source-map artifact metadata. Body/header capture is optional where supported and should stay disabled unless explicitly needed.
+
+### Privacy / PII / Redaction
+
+Do not send secrets, passwords, tokens, payment data, national IDs, or raw request/response bodies unless the SDK documentation for this package explicitly says the field is redacted and the behavior has been verified in your app. Authorization, cookie, token, password, secret, API key, and similar fields should be masked by default where capture is implemented. Add `beforeSend`/filter hooks or equivalent application-side scrubbing for domain-specific PII.
+
+### Production Safety
+
+The SDK must fail open: telemetry failures must not crash or materially block the host application. Keep queues bounded, retries bounded, debug logging off in production, and capture rates conservative until overhead is measured in your application. Live dashboard certification was **not verified** in the 2026-05-17 release-gate audit because live credentials were not available.
+
+### Troubleshooting
+
+If telemetry is missing, verify the package version, API key, ingest host, environment, release, network access to `https://api.allstak.sa`, sampling settings, framework integration order, and whether the SDK is disabled after an auth failure. For source maps, verify release/dist values and artifact upload responses.
+
+### Release / Source Map Setup
+
+JVM source map support is not applicable; Java stack frame grouping must be verified in dashboard certification.
+
+### Version Compatibility
+
+Keep the package manifest version, runtime SDK version constant, changelog entry, git tag, and registry version aligned. Do not publish from a dirty checkout.
+
+### Known Limitations
+
+Maven Central publication was not found in the audit. Treat install snippets as pending until artifacts are visible on Maven Central. Live dashboard proof, performance overhead, retry-storm behavior, and full production hardening must be revalidated before claiming production-stable readiness.
+
+### Stability Status
+
+Current status: **beta, publication pending**. This SDK is not production-stable unless a later certification report explicitly says so with live dashboard evidence.
+

@@ -23,10 +23,10 @@ class DataMaskerTest {
         Map<String, Object> masked = DataMasker.maskMetadata(metadata);
 
         assertThat(masked.get("orderId")).isEqualTo("ORD-123");
-        assertThat(masked.get("password")).isEqualTo("[MASKED]");
-        assertThat(masked.get("token")).isEqualTo("[MASKED]");
-        assertThat(masked.get("api_key")).isEqualTo("[MASKED]");
-        assertThat(masked.get("authorization")).isEqualTo("[MASKED]");
+        assertThat(masked.get("password")).isEqualTo("[REDACTED]");
+        assertThat(masked.get("token")).isEqualTo("[REDACTED]");
+        assertThat(masked.get("api_key")).isEqualTo("[REDACTED]");
+        assertThat(masked.get("authorization")).isEqualTo("[REDACTED]");
         assertThat(masked.get("amount")).isEqualTo(99.90);
     }
 
@@ -78,8 +78,8 @@ class DataMaskerTest {
 
         // Keys are lowercased for matching
         Map<String, Object> masked = DataMasker.maskMetadata(metadata);
-        assertThat(masked.get("PASSWORD")).isEqualTo("[MASKED]");
-        assertThat(masked.get("Token")).isEqualTo("[MASKED]");
-        assertThat(masked.get("SECRET")).isEqualTo("[MASKED]");
+        assertThat(masked.get("PASSWORD")).isEqualTo("[REDACTED]");
+        assertThat(masked.get("Token")).isEqualTo("[REDACTED]");
+        assertThat(masked.get("SECRET")).isEqualTo("[REDACTED]");
     }
 }

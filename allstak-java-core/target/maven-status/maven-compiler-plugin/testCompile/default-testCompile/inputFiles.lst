@@ -6,3 +6,4 @@
 /Volumes/M.2/MyProjects/AllStak-Projects/sdks/allstak-java-sdk/allstak-java-core/src/test/java/dev/allstak/RetryPolicyTest.java
 /Volumes/M.2/MyProjects/AllStak-Projects/sdks/allstak-java-sdk/allstak-java-core/src/test/java/dev/allstak/RingBufferTest.java
 /Volumes/M.2/MyProjects/AllStak-Projects/sdks/allstak-java-sdk/allstak-java-core/src/test/java/dev/allstak/SerializationTest.java
+/Volumes/M.2/MyProjects/AllStak-Projects/sdks/allstak-java-sdk/allstak-java-core/src/test/java/dev/allstak/database/InstrumentedStatementTest.java

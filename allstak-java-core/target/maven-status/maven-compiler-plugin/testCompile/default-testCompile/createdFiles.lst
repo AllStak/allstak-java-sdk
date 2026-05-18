@@ -6,3 +6,4 @@ dev/allstak/SerializationTest.class
 dev/allstak/RetryPolicyTest.class
 dev/allstak/DataMaskerTest.class
 dev/allstak/AllStakFacadeTest.class
+dev/allstak/database/InstrumentedStatementTest.class

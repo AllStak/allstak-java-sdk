@@ -119,8 +119,8 @@ class AllStakClientIntegrationTest {
 
         await().atMost(Duration.ofSeconds(3)).untilAsserted(() ->
                 wireMock.verify(postRequestedFor(urlEqualTo("/ingest/v1/errors"))
-                        .withRequestBody(containing("\"password\":\"[MASKED]\""))
-                        .withRequestBody(containing("\"token\":\"[MASKED]\""))
+                        .withRequestBody(containing("\"password\":\"[REDACTED]\""))
+                        .withRequestBody(containing("\"token\":\"[REDACTED]\""))
                         .withRequestBody(containing("\"orderId\":\"ORD-1\""))));
     }
 
@@ -196,7 +196,7 @@ class AllStakClientIntegrationTest {
         client.flush();
 
         wireMock.verify(postRequestedFor(urlEqualTo("/ingest/v1/logs"))
-                .withRequestBody(containing("\"secret\":\"[MASKED]\""))
+                .withRequestBody(containing("\"secret\":\"[REDACTED]\""))
                 .withRequestBody(containing("\"data\":\"ok\"")));
     }
 

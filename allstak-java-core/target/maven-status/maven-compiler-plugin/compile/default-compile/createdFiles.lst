@@ -24,7 +24,9 @@ dev/allstak/transport/RetryPolicy.class
 dev/allstak/model/Breadcrumb.class
 dev/allstak/AllStak.class
 dev/allstak/masking/DataMasker.class
+dev/allstak/AllStakConfig$BodyCaptureConfig.class
 dev/allstak/internal/FlushWorker.class
+dev/allstak/AllStakConfig$BodyCaptureBuilder.class
 dev/allstak/model/UserContext.class
 dev/allstak/buffer/RingBuffer.class
 dev/allstak/model/JobHandle.class

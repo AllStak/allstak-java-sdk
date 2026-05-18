@@ -64,9 +64,23 @@ public final class HttpTransport {
             return false;
         }
 
+        // Serialize → parse to a generic tree → scrub the tree → reserialize.
+        // The two-pass approach catches sensitive keys whether the caller
+        // used a POJO (with @JsonProperty), a Map, or a nested mix. One
+        // chokepoint here protects every telemetry type (errors, logs,
+        // http, db, spans). Pure (no caller mutation), fail-open on
+        // sanitizer error.
         String body;
         try {
-            body = objectMapper.writeValueAsString(payload);
+            String rawJson = objectMapper.writeValueAsString(payload);
+            try {
+                Object tree = objectMapper.readValue(rawJson, Object.class);
+                Object scrubbed = dev.allstak.masking.DataMasker.maskWire(tree);
+                body = objectMapper.writeValueAsString(scrubbed);
+            } catch (Exception sanErr) {
+                SdkLogger.debug("Sanitizer failed for {} ({}); sending raw payload", path, sanErr.getMessage());
+                body = rawJson;
+            }
         } catch (Exception e) {
             SdkLogger.debug("Failed to serialize payload for {}: {}", path, e.getMessage());
             return false;
