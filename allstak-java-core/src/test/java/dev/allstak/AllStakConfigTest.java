@@ -71,6 +71,6 @@ class AllStakConfigTest {
         assertThat(config.getBufferSize()).isEqualTo(500);
         assertThat(config.isDebug()).isFalse();
         assertThat(config.getEnvironment()).isEqualTo("production");
-        assertThat(config.getRelease()).isEqualTo("production");
+        assertThat(config.getRelease()).isNull();
     }
 }
