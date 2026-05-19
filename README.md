@@ -43,7 +43,7 @@ Once integrated, every event flows to your AllStak dashboard:
 <dependency>
   <groupId>sa.allstak</groupId>
   <artifactId>allstak-spring-boot-starter</artifactId>
-  <version>0.1.1</version>
+  <version>0.1.4</version>
 </dependency>
 ```
 
@@ -53,17 +53,20 @@ Plain Java (no Spring):
 <dependency>
   <groupId>sa.allstak</groupId>
   <artifactId>allstak-java-core</artifactId>
-  <version>0.1.1</version>
+  <version>0.1.4</version>
 </dependency>
 ```
 
 ### Gradle
 
 ```groovy
-implementation 'sa.allstak:allstak-spring-boot-starter:0.1.1'
+implementation 'sa.allstak:allstak-spring-boot-starter:0.1.4'
 // or, without Spring:
-implementation 'sa.allstak:allstak-java-core:0.1.1'
+implementation 'sa.allstak:allstak-java-core:0.1.4'
 ```
+
+> Maven coordinate `groupId` is `sa.allstak` (org namespace); the runtime
+> Java package is `dev.allstak.*`. They are intentionally different.
 
 ## Quick Start
 
@@ -150,6 +153,31 @@ Set user context:
 ```java
 AllStak.setUser(new UserContext("u_42", "alice@example.com"));
 AllStak.setTag("region", "eu-west-1");
+```
+
+## Flush and Shutdown
+
+The SDK uses a background worker that batches events and flushes every
+`flushIntervalMs` (default `2000`). For short-lived processes (CLIs,
+batch jobs, AWS Lambda) the JVM may exit before the worker drains its
+buffer — events will be lost. Always call `flush()` and `shutdown()`
+before exit:
+
+```java
+AllStak.captureException(new RuntimeException("test"));
+AllStak.flush();      // block until pending events are sent (best-effort)
+AllStak.shutdown();   // stop background worker, release resources
+```
+
+For long-running servers (Spring Boot, plain HTTP servers) the
+Spring auto-configuration registers a shutdown hook automatically.
+Plain-Java apps that do not register a shutdown hook should add one:
+
+```java
+Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+  AllStak.flush();
+  AllStak.shutdown();
+}));
 ```
 
 ## Production Endpoint
