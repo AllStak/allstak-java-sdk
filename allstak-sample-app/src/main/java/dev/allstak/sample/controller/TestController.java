@@ -40,6 +40,11 @@ public class TestController {
         }
     }
 
+    @PostMapping("/echo")
+    public Map<String, Object> echo(@RequestBody Map<String, Object> body) {
+        return Map.of("received", body.getOrDefault("safe", "ok"));
+    }
+
     @PostMapping("/capture-log")
     public Map<String, String> captureLog(@RequestParam(defaultValue = "info") String level,
                                            @RequestParam(defaultValue = "Test log message") String message) {

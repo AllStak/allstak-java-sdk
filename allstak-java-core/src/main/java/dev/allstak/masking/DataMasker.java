@@ -1,5 +1,10 @@
 package dev.allstak.masking;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
@@ -13,11 +18,18 @@ public final class DataMasker {
 
     private static final String MASKED = "[MASKED]";
     private static final String FILTERED = "[FILTERED]";
+    private static final String REDACTED = "[REDACTED]";
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private static final Set<String> SENSITIVE_METADATA_KEYS = Set.of(
             "password", "secret", "token", "key", "authorization",
             "creditcard", "credit_card", "cardnumber", "card_number",
-            "cvv", "ssn", "api_key", "apikey"
+            "cvv", "ssn", "api_key", "apikey", "email", "phone",
+            "phonenumber", "phone_number", "mobile", "nationalid",
+            "national_id", "idnumber", "id_number", "otp", "otpcode",
+            "otp_code", "passcode", "pin", "access_token", "refreshtoken",
+            "refresh_token", "id_token", "jwt", "cookie", "set_cookie",
+            "set-cookie", "iban", "pan", "cvc"
     );
 
     private static final Set<String> SENSITIVE_HEADERS = Set.of(
@@ -26,6 +38,14 @@ public final class DataMasker {
 
     private static final Pattern SENSITIVE_QUERY_PARAM = Pattern.compile(
             "(token|key|secret|password|auth|api_key)=([^&]*)",
+            Pattern.CASE_INSENSITIVE
+    );
+    private static final Pattern JSON_SENSITIVE_VALUE = Pattern.compile(
+            "(\"[^\"]*(?:authorization|cookie|set-cookie|password|passwd|pwd|passcode|otp|mfa|totp|pin|token|secret|api[-_]?key|access[-_]?token|refresh[-_]?token|id[-_]?token|jwt|bearer|client[-_]?secret|card|credit[-_]?card|cardnumber|phone|mobile|email|pan|iban|national[-_]?id|id[-_]?number|ssn|cvv|cvc)[^\"]*\"\\s*:\\s*)(\"(?:\\\\.|[^\"])*\"|\\d+(?:\\.\\d+)?|true|false|null)",
+            Pattern.CASE_INSENSITIVE
+    );
+    private static final Pattern FORM_SENSITIVE_VALUE = Pattern.compile(
+            "(^|[&\\s])([^=&\\s]*(?:authorization|cookie|set-cookie|password|passwd|pwd|passcode|otp|mfa|totp|pin|token|secret|api[-_]?key|access[-_]?token|refresh[-_]?token|id[-_]?token|jwt|bearer|client[-_]?secret|card|credit[-_]?card|cardnumber|phone|mobile|email|pan|iban|national[-_]?id|id[-_]?number|ssn|cvv|cvc)[^=&\\s]*=)([^&\\s]+)",
             Pattern.CASE_INSENSITIVE
     );
 
@@ -65,6 +85,79 @@ public final class DataMasker {
     public static boolean isSensitiveHeader(String headerName) {
         if (headerName == null) return false;
         return SENSITIVE_HEADERS.contains(headerName.toLowerCase());
+    }
+
+    public static String maskBody(String body, String contentType) {
+        if (body == null || body.isBlank()) return body;
+        if (isJsonContent(contentType)) {
+            try {
+                JsonNode root = OBJECT_MAPPER.readTree(body);
+                maskJson(root);
+                return OBJECT_MAPPER.writeValueAsString(root);
+            } catch (Exception ignored) {
+                return maskText(body);
+            }
+        }
+        return maskText(body);
+    }
+
+    public static boolean bodyNeedsRedaction(String body, String contentType) {
+        if (body == null || body.isBlank()) return false;
+        return !body.equals(maskBody(body, contentType));
+    }
+
+    private static void maskJson(JsonNode node) {
+        if (node == null) return;
+        if (node instanceof ObjectNode objectNode) {
+            var fields = objectNode.fields();
+            while (fields.hasNext()) {
+                var field = fields.next();
+                if (isSensitiveKey(field.getKey())) {
+                    objectNode.put(field.getKey(), REDACTED);
+                } else {
+                    maskJson(field.getValue());
+                }
+            }
+        } else if (node instanceof ArrayNode arrayNode) {
+            for (JsonNode child : arrayNode) {
+                maskJson(child);
+            }
+        }
+    }
+
+    private static String maskText(String body) {
+        String masked = JSON_SENSITIVE_VALUE.matcher(body).replaceAll("$1\"" + REDACTED + "\"");
+        return FORM_SENSITIVE_VALUE.matcher(masked).replaceAll("$1$2" + REDACTED);
+    }
+
+    private static boolean isSensitiveKey(String key) {
+        if (key == null) return false;
+        String normalized = key.toLowerCase().replaceAll("[^a-z0-9]", "");
+        return SENSITIVE_METADATA_KEYS.contains(normalized)
+                || normalized.contains("password")
+                || normalized.contains("token")
+                || normalized.contains("secret")
+                || normalized.contains("authorization")
+                || normalized.contains("cookie")
+                || normalized.contains("apikey")
+                || normalized.contains("otp")
+                || normalized.contains("totp")
+                || normalized.contains("card")
+                || normalized.contains("cvv")
+                || normalized.contains("cvc")
+                || normalized.contains("iban")
+                || normalized.contains("nationalid")
+                || normalized.contains("idnumber")
+                || normalized.equals("email")
+                || normalized.equals("phone")
+                || normalized.equals("phonenumber")
+                || normalized.equals("mobile");
+    }
+
+    private static boolean isJsonContent(String contentType) {
+        if (contentType == null) return false;
+        String lower = contentType.toLowerCase();
+        return lower.contains("application/json") || lower.contains("+json");
     }
 
     /**

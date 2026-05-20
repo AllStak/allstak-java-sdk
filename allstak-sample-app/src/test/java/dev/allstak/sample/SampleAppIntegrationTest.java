@@ -120,6 +120,25 @@ class SampleAppIntegrationTest {
                         .withRequestBody(containing("\"path\":\"/test/health\""))));
     }
 
+    @Test
+    void servletFilter_capturesInboundBodiesWithRedaction() throws Exception {
+        mockMvc.perform(MockMvcRequestBuilders.post("/test/echo")
+                        .contentType("application/json")
+                        .content("{\"email\":\"user@example.com\",\"password\":\"secret\",\"safe\":\"ok\"}"))
+                .andExpect(status().isOk());
+
+        await().atMost(Duration.ofSeconds(5)).untilAsserted(() ->
+                wireMock.verify(postRequestedFor(urlEqualTo("/ingest/v1/http-requests"))
+                        .withRequestBody(containing("\"direction\":\"inbound\""))
+                        .withRequestBody(containing("\"method\":\"POST\""))
+                        .withRequestBody(containing("\"path\":\"/test/echo\""))
+                        .withRequestBody(containing("\"requestBodyCaptureStatus\":\"redacted\""))
+                        .withRequestBody(containing("\"responseBodyCaptureStatus\":\"captured\""))
+                        .withRequestBody(containing("\\\"email\\\":\\\"[REDACTED]\\\""))
+                        .withRequestBody(containing("\\\"password\\\":\\\"[REDACTED]\\\""))
+                        .withRequestBody(containing("\\\"safe\\\":\\\"ok\\\""))));
+    }
+
     // =========================================================================
     // Exception Capture via Global Handler
     // =========================================================================

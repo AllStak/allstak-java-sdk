@@ -43,7 +43,7 @@ Once integrated, every event flows to your AllStak dashboard:
 <dependency>
   <groupId>sa.allstak</groupId>
   <artifactId>allstak-spring-boot-starter</artifactId>
-  <version>0.1.4</version>
+  <version>0.1.5</version>
 </dependency>
 ```
 
@@ -53,16 +53,16 @@ Plain Java (no Spring):
 <dependency>
   <groupId>sa.allstak</groupId>
   <artifactId>allstak-java-core</artifactId>
-  <version>0.1.4</version>
+  <version>0.1.5</version>
 </dependency>
 ```
 
 ### Gradle
 
 ```groovy
-implementation 'sa.allstak:allstak-spring-boot-starter:0.1.4'
+implementation 'sa.allstak:allstak-spring-boot-starter:0.1.5'
 // or, without Spring:
-implementation 'sa.allstak:allstak-java-core:0.1.4'
+implementation 'sa.allstak:allstak-java-core:0.1.5'
 ```
 
 > Maven coordinate `groupId` is `sa.allstak` (org namespace); the runtime

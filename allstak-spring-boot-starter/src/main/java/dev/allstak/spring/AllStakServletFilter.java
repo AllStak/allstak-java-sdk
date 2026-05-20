@@ -2,6 +2,7 @@ package dev.allstak.spring;
 
 import dev.allstak.AllStakClient;
 import dev.allstak.internal.SdkLogger;
+import dev.allstak.masking.DataMasker;
 import dev.allstak.model.HttpRequestItem;
 import dev.allstak.model.RequestContext;
 import jakarta.servlet.FilterChain;
@@ -9,9 +10,12 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.springframework.web.util.ContentCachingRequestWrapper;
 import org.springframework.web.util.ContentCachingResponseWrapper;
 
 import java.io.IOException;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Enumeration;
 import java.util.LinkedHashMap;
@@ -24,6 +28,8 @@ import java.util.UUID;
  * Measures timing, captures method/path/status/sizes, and sends to AllStak.
  */
 public class AllStakServletFilter extends OncePerRequestFilter {
+
+    private static final int MAX_BODY_CHARS = 8192;
 
     private static final Set<String> SENSITIVE_HEADERS = Set.of(
             "authorization", "cookie", "set-cookie", "x-api-key", "x-auth-token", "x-allstak-key");
@@ -41,26 +47,27 @@ public class AllStakServletFilter extends OncePerRequestFilter {
 
         String timestamp = Instant.now().toString();
         long startTime = System.currentTimeMillis();
+        ContentCachingRequestWrapper requestWrapper = new ContentCachingRequestWrapper(request);
         ContentCachingResponseWrapper responseWrapper = new ContentCachingResponseWrapper(response);
 
         String traceId = UUID.randomUUID().toString();
         RequestContext ctx = RequestContext.of(
-                request.getMethod(),
-                request.getRequestURI(),
-                request.getServerName(),
-                request.getHeader("User-Agent"),
+                requestWrapper.getMethod(),
+                requestWrapper.getRequestURI(),
+                requestWrapper.getServerName(),
+                requestWrapper.getHeader("User-Agent"),
                 traceId);
         AllStakClient.setRequestContext(ctx);
 
         if (client.getConfig().isAutoBreadcrumbs()) {
             client.addBreadcrumb("http",
-                    request.getMethod() + " " + request.getRequestURI() + " -> processing",
+                    requestWrapper.getMethod() + " " + requestWrapper.getRequestURI() + " -> processing",
                     "info",
-                    Map.of("method", request.getMethod(), "path", request.getRequestURI(), "host", request.getServerName()));
+                    Map.of("method", requestWrapper.getMethod(), "path", requestWrapper.getRequestURI(), "host", requestWrapper.getServerName()));
         }
 
         try {
-            filterChain.doFilter(request, responseWrapper);
+            filterChain.doFilter(requestWrapper, responseWrapper);
         } finally {
             try {
                 long durationMs = System.currentTimeMillis() - startTime;
@@ -68,7 +75,7 @@ public class AllStakServletFilter extends OncePerRequestFilter {
 
                 // Capture request headers (sanitized)
                 Map<String, String> reqHeaders = new LinkedHashMap<>();
-                Enumeration<String> headerNames = request.getHeaderNames();
+                Enumeration<String> headerNames = requestWrapper.getHeaderNames();
                 if (headerNames != null) {
                     while (headerNames.hasMoreElements()) {
                         String name = headerNames.nextElement();
@@ -76,7 +83,7 @@ public class AllStakServletFilter extends OncePerRequestFilter {
                         if (SENSITIVE_HEADERS.contains(lowerName)) {
                             reqHeaders.put(name, "[REDACTED]");
                         } else {
-                            reqHeaders.put(name, request.getHeader(name));
+                            reqHeaders.put(name, requestWrapper.getHeader(name));
                         }
                     }
                 }
@@ -101,21 +108,38 @@ public class AllStakServletFilter extends OncePerRequestFilter {
                     if (!resHeaders.isEmpty()) resHeadersJson = mapper.writeValueAsString(resHeaders);
                 } catch (Exception ignored) {}
 
+                BodyCapture requestBody = captureBody(
+                        requestWrapper.getContentAsByteArray(),
+                        requestWrapper.getContentType(),
+                        requestWrapper.getCharacterEncoding(),
+                        "request");
+                BodyCapture responseBody = captureBody(
+                        responseWrapper.getContentAsByteArray(),
+                        responseWrapper.getContentType(),
+                        responseWrapper.getCharacterEncoding(),
+                        "response");
+
                 HttpRequestItem item = HttpRequestItem.builder()
                         .traceId(traceId)
                         .spanId(spanId)
                         .direction("inbound")
-                        .method(request.getMethod())
-                        .host(request.getServerName())
-                        .path(request.getRequestURI())  // query params are NOT included in getRequestURI
+                        .method(requestWrapper.getMethod())
+                        .host(requestWrapper.getServerName())
+                        .path(requestWrapper.getRequestURI())  // query params are NOT included in getRequestURI
                         .statusCode(responseWrapper.getStatus())
                         .durationMs(durationMs)
-                        .requestSize(request.getContentLengthLong() > 0 ? request.getContentLengthLong() : 0)
+                        .requestSize(requestWrapper.getContentLengthLong() > 0 ? requestWrapper.getContentLengthLong() : 0)
                         .responseSize(responseWrapper.getContentSize())
-                        .userId(request.getRemoteUser())
+                        .userId(requestWrapper.getRemoteUser())
                         .timestamp(timestamp)
                         .requestHeaders(reqHeadersJson)
                         .responseHeaders(resHeadersJson)
+                        .requestBody(requestBody.body())
+                        .responseBody(responseBody.body())
+                        .requestBodyCaptureStatus(requestBody.status())
+                        .responseBodyCaptureStatus(responseBody.status())
+                        .requestBodyCaptureReason(requestBody.reason())
+                        .responseBodyCaptureReason(responseBody.reason())
                         .environment(client.getConfig().getEnvironment())
                         .release(client.getConfig().getRelease())
                         .build();
@@ -127,8 +151,8 @@ public class AllStakServletFilter extends OncePerRequestFilter {
                     traceId,
                     spanId,
                     "",  // root span - no parent
-                    request.getMethod() + " " + request.getRequestURI(),
-                    "HTTP " + request.getMethod() + " " + request.getRequestURI(),
+                    requestWrapper.getMethod() + " " + requestWrapper.getRequestURI(),
+                    "HTTP " + requestWrapper.getMethod() + " " + requestWrapper.getRequestURI(),
                     responseWrapper.getStatus() >= 500 ? "error" : "ok",
                     durationMs,
                     startTime,
@@ -136,18 +160,18 @@ public class AllStakServletFilter extends OncePerRequestFilter {
                     null,  // uses config service name
                     null,  // uses config environment
                     Map.of(
-                        "http.method", request.getMethod(),
-                        "http.url", request.getRequestURI(),
+                        "http.method", requestWrapper.getMethod(),
+                        "http.url", requestWrapper.getRequestURI(),
                         "http.status_code", String.valueOf(responseWrapper.getStatus()),
-                        "http.host", request.getServerName()
+                        "http.host", requestWrapper.getServerName()
                     )
                 );
 
                 if (client.getConfig().isAutoBreadcrumbs()) {
                     client.addBreadcrumb("http",
-                            request.getMethod() + " " + request.getRequestURI() + " -> " + responseWrapper.getStatus(),
+                            requestWrapper.getMethod() + " " + requestWrapper.getRequestURI() + " -> " + responseWrapper.getStatus(),
                             responseWrapper.getStatus() >= 400 ? "error" : "info",
-                            Map.of("method", request.getMethod(), "path", request.getRequestURI(),
+                            Map.of("method", requestWrapper.getMethod(), "path", requestWrapper.getRequestURI(),
                                    "statusCode", responseWrapper.getStatus(), "durationMs", durationMs));
                 }
             } catch (Exception e) {
@@ -167,4 +191,53 @@ public class AllStakServletFilter extends OncePerRequestFilter {
         String path = request.getRequestURI();
         return path.startsWith("/actuator") || path.equals("/health");
     }
+
+    private static BodyCapture captureBody(byte[] bytes, String contentType, String encoding, String direction) {
+        if (bytes == null || bytes.length == 0) {
+            return new BodyCapture(null, "disabled", direction + " body is empty.");
+        }
+        if (!isBodyCaptureSupported(contentType)) {
+            return new BodyCapture(null, "unsupported", direction + " body content type is not supported.");
+        }
+
+        String body = new String(bytes, resolveCharset(encoding));
+        boolean truncated = body.length() > MAX_BODY_CHARS;
+        if (truncated) {
+            body = body.substring(0, MAX_BODY_CHARS);
+        }
+
+        String masked = DataMasker.maskBody(body, contentType);
+        boolean redacted = !body.equals(masked);
+        if (truncated) {
+            return new BodyCapture(masked, "truncated", direction + " body captured and truncated.");
+        }
+        if (redacted) {
+            return new BodyCapture(masked, "redacted", direction + " body captured with sensitive fields redacted.");
+        }
+        return new BodyCapture(masked, "captured", direction + " body captured.");
+    }
+
+    private static boolean isBodyCaptureSupported(String contentType) {
+        if (contentType == null || contentType.isBlank()) return true;
+        String lower = contentType.toLowerCase();
+        return lower.startsWith("text/")
+                || lower.contains("application/json")
+                || lower.contains("+json")
+                || lower.contains("application/xml")
+                || lower.contains("+xml")
+                || lower.contains("application/x-www-form-urlencoded")
+                || lower.contains("application/graphql");
+    }
+
+    private static Charset resolveCharset(String encoding) {
+        try {
+            return encoding == null || encoding.isBlank()
+                    ? StandardCharsets.UTF_8
+                    : Charset.forName(encoding);
+        } catch (Exception ignored) {
+            return StandardCharsets.UTF_8;
+        }
+    }
+
+    private record BodyCapture(String body, String status, String reason) {}
 }

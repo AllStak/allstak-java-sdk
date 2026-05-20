@@ -272,6 +272,10 @@ public final class AllStakClient {
                     .responseHeaders(item.getResponseHeaders())
                     .requestBody(item.getRequestBody())
                     .responseBody(item.getResponseBody())
+                    .requestBodyCaptureStatus(item.getRequestBodyCaptureStatus())
+                    .responseBodyCaptureStatus(item.getResponseBodyCaptureStatus())
+                    .requestBodyCaptureReason(item.getRequestBodyCaptureReason())
+                    .responseBodyCaptureReason(item.getResponseBodyCaptureReason())
                     // Default release/environment to config-level values when
                     // the caller didn't set them explicitly on the item. This
                     // is what makes auto-instrumented inbound requests carry

@@ -75,6 +75,9 @@ class SerializationTest {
                 .requestSize(0)
                 .responseSize(2048)
                 .timestamp("2026-03-31T12:00:00Z")
+                .requestBody("{\"email\":\"[REDACTED]\",\"ok\":true}")
+                .requestBodyCaptureStatus("redacted")
+                .requestBodyCaptureReason("request body captured with sensitive fields redacted.")
                 .build();
 
         HttpRequestBatch batch = new HttpRequestBatch(List.of(item));
@@ -83,6 +86,8 @@ class SerializationTest {
         assertThat(json).contains("\"requests\":[");
         assertThat(json).contains("\"direction\":\"inbound\"");
         assertThat(json).contains("\"durationMs\":142");
+        assertThat(json).contains("\"requestBodyCaptureStatus\":\"redacted\"");
+        assertThat(json).contains("\"requestBodyCaptureReason\":\"request body captured with sensitive fields redacted.\"");
     }
 
     @Test
