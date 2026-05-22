@@ -24,8 +24,9 @@ import java.util.concurrent.atomic.AtomicReference;
  * AllStak.captureLog("info", "Order processed", Map.of("orderId", "ORD-123"));
  * }</pre>
  *
- * <p>The ingest host is fixed by the SDK ({@link AllStakConfig#INGEST_HOST}) and
- * cannot be overridden. Customers only configure their API key and metadata.
+ * <p>The ingest host defaults to {@link AllStakConfig#INGEST_HOST}. Customers
+ * normally configure only their API key and metadata; self-hosted or validation
+ * environments can use {@code ALLSTAK_HOST}.
  */
 public final class AllStak {
 

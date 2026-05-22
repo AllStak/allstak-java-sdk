@@ -12,7 +12,6 @@ import reactor.core.publisher.Mono;
 
 import java.net.URI;
 import java.time.Instant;
-import java.util.UUID;
 
 /**
  * Reactive {@link ExchangeFilterFunction} that captures every outbound
@@ -40,22 +39,27 @@ public class AllStakWebClientFilter implements ExchangeFilterFunction {
     public Mono<ClientResponse> filter(ClientRequest request, ExchangeFunction next) {
         final long start = System.currentTimeMillis();
         final String traceId = resolveTraceId();
-        final String spanId = UUID.randomUUID().toString().substring(0, 16);
+        final String requestId = AllStakTraceHeaders.randomTraceId();
+        final String spanId = AllStakTraceHeaders.randomSpanId();
         final URI uri = request.url();
+        ClientRequest tracedRequest = ClientRequest.from(request)
+                .headers(h -> AllStakTraceHeaders.apply(h, traceId, requestId, spanId))
+                .build();
 
-        return next.exchange(request)
-                .doOnNext(response -> safeRecord(request, uri, traceId, spanId, start,
+        return next.exchange(tracedRequest)
+                .doOnNext(response -> safeRecord(tracedRequest, uri, traceId, requestId, spanId, start,
                         response.statusCode().value(), null))
-                .doOnError(err -> safeRecord(request, uri, traceId, spanId, start, 0,
+                .doOnError(err -> safeRecord(tracedRequest, uri, traceId, requestId, spanId, start, 0,
                         err.getClass().getName()));
     }
 
-    private void safeRecord(ClientRequest request, URI uri, String traceId, String spanId,
+    private void safeRecord(ClientRequest request, URI uri, String traceId, String requestId, String spanId,
                             long start, int statusCode, String errorFingerprint) {
         try {
             long durationMs = System.currentTimeMillis() - start;
             HttpRequestItem item = HttpRequestItem.builder()
                     .traceId(traceId)
+                    .requestId(requestId)
                     .spanId(spanId)
                     .direction("outbound")
                     .method(request.method().name())
@@ -81,6 +85,6 @@ public class AllStakWebClientFilter implements ExchangeFilterFunction {
         if (ctx != null && ctx.getTraceId() != null && !ctx.getTraceId().isEmpty()) {
             return ctx.getTraceId();
         }
-        return UUID.randomUUID().toString();
+        return AllStakTraceHeaders.randomTraceId();
     }
 }

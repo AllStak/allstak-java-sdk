@@ -5,8 +5,10 @@ import dev.allstak.transport.HttpTransport;
 
 import java.util.List;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
 
 /**
@@ -63,8 +65,17 @@ public final class FlushWorker<T> {
     public void shutdown() {
         running = false;
         try {
-            // Best-effort drain within 5 seconds
-            flush();
+            // Best-effort drain, but never let application shutdown wait for
+            // the full network retry schedule when the ingest host is gone.
+            Future<?> drain = scheduler.submit(this::flush);
+            try {
+                drain.get(2, TimeUnit.SECONDS);
+            } catch (TimeoutException e) {
+                drain.cancel(true);
+                SdkLogger.debug("Flush worker '{}' drain timed out during shutdown", featureName);
+            } catch (Exception e) {
+                SdkLogger.debug("Flush worker '{}' drain failed during shutdown: {}", featureName, e.getMessage());
+            }
             scheduler.shutdown();
             if (!scheduler.awaitTermination(5, TimeUnit.SECONDS)) {
                 scheduler.shutdownNow();

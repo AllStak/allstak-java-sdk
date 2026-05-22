@@ -255,6 +255,7 @@ public final class AllStakClient {
             // Strip query parameters from path, preserve all other fields
             HttpRequestItem sanitized = HttpRequestItem.builder()
                     .traceId(item.getTraceId())
+                    .requestId(item.getRequestId())
                     .spanId(item.getSpanId())
                     .parentSpanId(item.getParentSpanId())
                     .direction(item.getDirection())

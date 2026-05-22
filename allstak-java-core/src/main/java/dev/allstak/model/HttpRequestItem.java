@@ -6,6 +6,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 public final class HttpRequestItem {
 
     private final String traceId;
+    private final String requestId;
     private final String spanId;
     private final String parentSpanId;
     private final String direction;
@@ -32,6 +33,7 @@ public final class HttpRequestItem {
 
     private HttpRequestItem(Builder builder) {
         this.traceId = builder.traceId;
+        this.requestId = builder.requestId;
         this.spanId = builder.spanId;
         this.parentSpanId = builder.parentSpanId;
         this.direction = builder.direction;
@@ -58,6 +60,7 @@ public final class HttpRequestItem {
     }
 
     public String getTraceId() { return traceId; }
+    public String getRequestId() { return requestId; }
     public String getSpanId() { return spanId; }
     public String getParentSpanId() { return parentSpanId; }
     public String getDirection() { return direction; }
@@ -86,6 +89,7 @@ public final class HttpRequestItem {
 
     public static final class Builder {
         private String traceId;
+        private String requestId;
         private String spanId;
         private String parentSpanId;
         private String direction;
@@ -111,6 +115,7 @@ public final class HttpRequestItem {
         private String release;
 
         public Builder traceId(String traceId) { this.traceId = traceId; return this; }
+        public Builder requestId(String requestId) { this.requestId = requestId; return this; }
         public Builder spanId(String spanId) { this.spanId = spanId; return this; }
         public Builder parentSpanId(String parentSpanId) { this.parentSpanId = parentSpanId; return this; }
         public Builder direction(String direction) { this.direction = direction; return this; }

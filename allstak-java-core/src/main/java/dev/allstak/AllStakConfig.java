@@ -5,15 +5,15 @@ import java.util.Objects;
 /**
  * Configuration for the AllStak SDK. Use the {@link Builder} to construct.
  *
- * <p>The ingest host is fixed to {@link #INGEST_HOST} and is not customer-configurable.
- * Customers only need to provide an API key (issued from the AllStak dashboard) and
- * optional environment / release / service metadata.
+ * <p>The ingest host defaults to {@link #INGEST_HOST}. Local validation and
+ * self-hosted deployments can override it with {@code ALLSTAK_HOST} without
+ * adding another required setup option for normal production users.
  */
 public final class AllStakConfig {
 
     /**
-     * The single, static AllStak ingest host. Not customer-configurable on purpose:
-     * customers should never have to know or care about which URL their events go to.
+     * The default AllStak ingest host. Customers should not need to set this
+     * for standard production usage.
      */
     public static final String INGEST_HOST = "https://api.allstak.sa";
     /** Hardcoded SDK identity. Sent on the wire as {@code sdk.name} / {@code sdk.version}. */
@@ -66,8 +66,10 @@ public final class AllStakConfig {
     }
 
     public String getApiKey() { return apiKey; }
-    /** Returns the static ingest host. Always {@link #INGEST_HOST}. */
-    public String getHost() { return INGEST_HOST; }
+    /** Returns the effective ingest host. Defaults to {@link #INGEST_HOST}. */
+    public String getHost() {
+        return envOr("ALLSTAK_HOST", INGEST_HOST).replaceAll("/+$", "");
+    }
     public String getEnvironment() { return environment; }
     public String getRelease() { return release; }
     public long getFlushIntervalMs() { return flushIntervalMs; }

@@ -21,7 +21,6 @@ import java.util.Enumeration;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 
 /**
  * Servlet filter that automatically captures inbound HTTP requests for AllStak monitoring.
@@ -50,7 +49,9 @@ public class AllStakServletFilter extends OncePerRequestFilter {
         ContentCachingRequestWrapper requestWrapper = new ContentCachingRequestWrapper(request);
         ContentCachingResponseWrapper responseWrapper = new ContentCachingResponseWrapper(response);
 
-        String traceId = UUID.randomUUID().toString();
+        AllStakTraceHeaders headers = AllStakTraceHeaders.from(requestWrapper);
+        String traceId = headers.traceId;
+        String spanId = AllStakTraceHeaders.randomSpanId();
         RequestContext ctx = RequestContext.of(
                 requestWrapper.getMethod(),
                 requestWrapper.getRequestURI(),
@@ -58,6 +59,13 @@ public class AllStakServletFilter extends OncePerRequestFilter {
                 requestWrapper.getHeader("User-Agent"),
                 traceId);
         AllStakClient.setRequestContext(ctx);
+        responseWrapper.setHeader("X-AllStak-Trace-Id", traceId);
+        responseWrapper.setHeader("X-AllStak-Request-Id", headers.requestId);
+        responseWrapper.setHeader("X-AllStak-Span-Id", spanId);
+        responseWrapper.setHeader("traceparent", "00-" + traceId + "-" + spanId + "-01");
+        responseWrapper.setHeader("baggage", AllStakTraceHeaders.mergeBaggage(
+                requestWrapper.getHeader("baggage"), traceId, headers.requestId, spanId));
+        responseWrapper.setHeader("AllStak-Baggage", AllStakTraceHeaders.baggage(traceId, headers.requestId, spanId));
 
         if (client.getConfig().isAutoBreadcrumbs()) {
             client.addBreadcrumb("http",
@@ -71,7 +79,6 @@ public class AllStakServletFilter extends OncePerRequestFilter {
         } finally {
             try {
                 long durationMs = System.currentTimeMillis() - startTime;
-                String spanId = UUID.randomUUID().toString().substring(0, 16);
 
                 // Capture request headers (sanitized)
                 Map<String, String> reqHeaders = new LinkedHashMap<>();
@@ -121,7 +128,9 @@ public class AllStakServletFilter extends OncePerRequestFilter {
 
                 HttpRequestItem item = HttpRequestItem.builder()
                         .traceId(traceId)
+                        .requestId(headers.requestId)
                         .spanId(spanId)
+                        .parentSpanId(headers.parentSpanId)
                         .direction("inbound")
                         .method(requestWrapper.getMethod())
                         .host(requestWrapper.getServerName())
@@ -150,7 +159,7 @@ public class AllStakServletFilter extends OncePerRequestFilter {
                 client.captureSpan(
                     traceId,
                     spanId,
-                    "",  // root span - no parent
+                    headers.parentSpanId,
                     requestWrapper.getMethod() + " " + requestWrapper.getRequestURI(),
                     "HTTP " + requestWrapper.getMethod() + " " + requestWrapper.getRequestURI(),
                     responseWrapper.getStatus() >= 500 ? "error" : "ok",

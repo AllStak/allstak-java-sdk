@@ -1,43 +1,10 @@
-# allstak-java-sdk
+# AllStak Java SDK
 
-**Production error tracking + structured logs for Spring Boot apps. Auto-configures in one dependency.**
+AllStak SDK for Java and Spring Boot. Captures exceptions, logs, inbound and outbound HTTP requests, spans, JDBC telemetry, and scheduled job telemetry.
 
-[![Maven Central](https://img.shields.io/maven-central/v/sa.allstak/allstak-java-core.svg)](https://central.sonatype.com/artifact/sa.allstak/allstak-java-core)
-[![CI](https://github.com/AllStak/allstak-java-sdk/actions/workflows/ci.yml/badge.svg)](https://github.com/AllStak/allstak-java-sdk/actions)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+## Install
 
-Official AllStak SDK for Java and Spring Boot — captures exceptions, structured logs, HTTP requests, database queries, and distributed traces with a single auto-configured starter.
-
-## Dashboard
-
-View captured events live at [app.allstak.sa](https://app.allstak.sa).
-
-![AllStak dashboard](https://app.allstak.sa/images/dashboard-preview.png)
-
-## Features
-
-- Exception and `Thread.UncaughtExceptionHandler` capture
-- Structured logs via SLF4J bridge
-- Spring Boot auto-configuration (servlet filter, `RestTemplate` / `WebClient` interceptors)
-- JDBC `DataSource` wrapper for DB query telemetry
-- Distributed tracing with span context propagation
-- Cron heartbeats and outbound HTTP capture
-- Java 17+ / Spring Boot 3.x
-
-## What You Get
-
-Once integrated, every event flows to your AllStak dashboard:
-
-- **Errors** — stack traces, breadcrumbs, release + environment tags
-- **Logs** — structured logs bridged from SLF4J with search and filters
-- **HTTP** — inbound and outbound request timing, status codes, failed calls
-- **Database** — JDBC query capture with statement normalization
-- **Traces** — distributed spans with context propagation
-- **Alerts** — email and webhook notifications on regressions
-
-## Installation
-
-### Maven
+Spring Boot:
 
 ```xml
 <dependency>
@@ -47,7 +14,7 @@ Once integrated, every event flows to your AllStak dashboard:
 </dependency>
 ```
 
-Plain Java (no Spring):
+Plain Java:
 
 ```xml
 <dependency>
@@ -57,44 +24,19 @@ Plain Java (no Spring):
 </dependency>
 ```
 
-### Gradle
-
-```groovy
-implementation 'sa.allstak:allstak-spring-boot-starter:0.1.5'
-// or, without Spring:
-implementation 'sa.allstak:allstak-java-core:0.1.5'
-```
-
-> Maven coordinate `groupId` is `sa.allstak` (org namespace); the runtime
-> Java package is `dev.allstak.*`. They are intentionally different.
-
-## Quick Start
-
-> Create a project at [app.allstak.sa](https://app.allstak.sa) to get your API key.
-
-### Spring Boot
-
-Add to `application.yml`:
+## Spring Boot setup
 
 ```yaml
 allstak:
   api-key: ${ALLSTAK_API_KEY}
   environment: production
-  release: myapp@1.0.0
-  service-name: myapp-api
+  release: ${ALLSTAK_RELEASE}
+  service-name: checkout-api
 ```
 
-Then capture a test exception anywhere in your app:
+The starter auto-registers servlet request capture, exception capture, log capture, `RestTemplate`, `WebClient`, scheduled job, and JDBC integrations when those components are present.
 
-```java
-import dev.allstak.AllStak;
-
-AllStak.captureException(new RuntimeException("test: hello from allstak-java"));
-```
-
-Run the app — the test error appears in your dashboard within seconds.
-
-### Plain Java
+## Plain Java setup
 
 ```java
 import dev.allstak.AllStak;
@@ -103,93 +45,42 @@ import dev.allstak.AllStakConfig;
 AllStak.init(AllStakConfig.builder()
     .apiKey(System.getenv("ALLSTAK_API_KEY"))
     .environment("production")
-    .release("myapp@1.0.0")
-    .serviceName("myapp-api")
+    .release(System.getenv("ALLSTAK_RELEASE"))
+    .serviceName("worker")
     .build());
 
-AllStak.captureException(new RuntimeException("test: hello from allstak-java"));
+AllStak.captureLog("info", "worker started");
+AllStak.captureException(new RuntimeException("checkout failed"));
+AllStak.flush();
+AllStak.shutdown();
 ```
-
-## Get Your API Key
-
-1. Sign up at [app.allstak.sa](https://app.allstak.sa)
-2. Create a project
-3. Copy your API key from **Project Settings → API Keys**
-4. Export it as `ALLSTAK_API_KEY` or pass it to `AllStakConfig.builder().apiKey(...)`
 
 ## Configuration
 
-| Option | Type | Required | Default | Description |
-|---|---|---|---|---|
-| `apiKey` | `String` | yes | — | Project API key (`ask_live_…`) |
-| `environment` | `String` | no | — | Deployment env |
-| `release` | `String` | no | — | Version / git SHA |
-| `serviceName` | `String` | no | — | Logical service identifier |
-| `flushIntervalMs` | `long` | no | `2000` | Background flush cadence |
-| `bufferSize` | `int` | no | `500` | Max items per buffer |
-| `autoBreadcrumbs` | `boolean` | no | `true` | Auto-capture logs/HTTP breadcrumbs |
-| `maxBreadcrumbs` | `int` | no | `50` | Ring buffer size |
-| `debug` | `boolean` | no | `false` | Verbose SDK logging |
+| Property | Description |
+| --- | --- |
+| `allstak.api-key` | Project API key. |
+| `allstak.enabled` | Enables or disables auto-configuration. |
+| `allstak.environment` | Deployment environment. |
+| `allstak.release` | App version or commit SHA. |
+| `allstak.service-name` | Logical service name. |
+| `allstak.capture-http-requests` | Captures inbound requests. |
+| `allstak.capture-exceptions` | Captures exceptions. |
+| `allstak.capture-logs` | Captures logs. |
+| `allstak.capture-db-queries` | Captures JDBC queries. |
 
-The ingest endpoint is fixed at `https://api.allstak.sa` and set by `AllStakConfig.INGEST_HOST`.
+Set `ALLSTAK_HOST` only when using a self-hosted AllStak ingest endpoint.
 
-## Example Usage
+## Privacy
 
-Capture an exception with metadata:
+The SDK redacts common sensitive headers and fields. Avoid putting secrets in custom metadata or log messages.
 
-```java
-AllStak.captureException(new RuntimeException("Payment failed"),
-    Map.of("orderId", "ORD-42"));
-```
+## Troubleshooting
 
-Send a structured log:
-
-```java
-AllStak.captureLog("info", "Order processed", Map.of("orderId", "ORD-123"));
-```
-
-Set user context:
-
-```java
-AllStak.setUser(new UserContext("u_42", "alice@example.com"));
-AllStak.setTag("region", "eu-west-1");
-```
-
-## Flush and Shutdown
-
-The SDK uses a background worker that batches events and flushes every
-`flushIntervalMs` (default `2000`). For short-lived processes (CLIs,
-batch jobs, AWS Lambda) the JVM may exit before the worker drains its
-buffer — events will be lost. Always call `flush()` and `shutdown()`
-before exit:
-
-```java
-AllStak.captureException(new RuntimeException("test"));
-AllStak.flush();      // block until pending events are sent (best-effort)
-AllStak.shutdown();   // stop background worker, release resources
-```
-
-For long-running servers (Spring Boot, plain HTTP servers) the
-Spring auto-configuration registers a shutdown hook automatically.
-Plain-Java apps that do not register a shutdown hook should add one:
-
-```java
-Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-  AllStak.flush();
-  AllStak.shutdown();
-}));
-```
-
-## Production Endpoint
-
-Production endpoint: `https://api.allstak.sa`. The host is not customer-configurable in the public API; self-hosted deployments should build from source and override `AllStakConfig.INGEST_HOST`.
-
-## Links
-
-- Documentation: https://docs.allstak.sa
-- Dashboard: https://app.allstak.sa
-- Source: https://github.com/AllStak/allstak-java-sdk
+- No events: confirm `ALLSTAK_API_KEY` is available to the JVM.
+- Missing Spring telemetry: confirm the starter dependency is on the runtime classpath.
+- Missing outbound traces: use Spring-managed `RestTemplate` or `WebClient` beans.
 
 ## License
 
-MIT © AllStak
+MIT

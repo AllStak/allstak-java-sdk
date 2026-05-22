@@ -1,0 +1,111 @@
+package dev.allstak.spring;
+
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.http.HttpHeaders;
+
+import java.security.SecureRandom;
+import java.util.ArrayList;
+import java.util.List;
+
+final class AllStakTraceHeaders {
+    private static final SecureRandom RANDOM = new SecureRandom();
+
+    final String traceId;
+    final String parentSpanId;
+    final String requestId;
+
+    private AllStakTraceHeaders(String traceId, String parentSpanId, String requestId) {
+        this.traceId = traceId;
+        this.parentSpanId = parentSpanId;
+        this.requestId = requestId;
+    }
+
+    static AllStakTraceHeaders from(HttpServletRequest request) {
+        String traceparent = request.getHeader("traceparent");
+        String traceId = traceIdFromTraceparent(traceparent);
+        if (isBlank(traceId)) traceId = firstHeader(request, "X-AllStak-Trace-Id", "X-Trace-Id");
+        String parentSpanId = parentSpanIdFromTraceparent(traceparent);
+        if (isBlank(parentSpanId)) parentSpanId = firstHeader(request, "X-AllStak-Span-Id", "X-Span-Id");
+        String requestId = firstHeader(request, "X-Request-Id", "X-AllStak-Request-Id");
+        return new AllStakTraceHeaders(
+                isBlank(traceId) ? randomHex(16) : traceId,
+                parentSpanId == null ? "" : parentSpanId,
+                isBlank(requestId) ? randomHex(16) : requestId);
+    }
+
+    static String randomTraceId() {
+        return randomHex(16);
+    }
+
+    static String randomSpanId() {
+        return randomHex(8);
+    }
+
+    static String baggage(String traceId, String requestId, String spanId) {
+        List<String> parts = new ArrayList<>();
+        if (!isBlank(traceId)) parts.add("allstak-trace_id=" + traceId);
+        if (!isBlank(requestId)) parts.add("allstak-request_id=" + requestId);
+        if (!isBlank(spanId)) parts.add("allstak-span_id=" + spanId);
+        return String.join(",", parts);
+    }
+
+    static String mergeBaggage(String existing, String traceId, String requestId, String spanId) {
+        List<String> parts = new ArrayList<>();
+        if (!isBlank(existing)) {
+            for (String part : existing.split(",")) {
+                String trimmed = part.trim();
+                if (!trimmed.isEmpty() && !trimmed.toLowerCase().startsWith("allstak-")) {
+                    parts.add(trimmed);
+                }
+            }
+        }
+        String own = baggage(traceId, requestId, spanId);
+        if (!own.isEmpty()) {
+            for (String part : own.split(",")) parts.add(part);
+        }
+        return String.join(",", parts);
+    }
+
+    static void apply(HttpHeaders target, String traceId, String requestId, String spanId) {
+        target.set("X-AllStak-Trace-Id", traceId);
+        if (!isBlank(requestId)) target.set("X-AllStak-Request-Id", requestId);
+        if (!isBlank(spanId)) {
+            target.set("X-AllStak-Span-Id", spanId);
+            target.set("traceparent", "00-" + traceId + "-" + spanId.substring(0, Math.min(16, spanId.length())) + "-01");
+        }
+        target.set("baggage", mergeBaggage(target.getFirst("baggage"), traceId, requestId, spanId));
+        target.set("AllStak-Baggage", baggage(traceId, requestId, spanId));
+    }
+
+    private static String firstHeader(HttpServletRequest request, String... names) {
+        for (String name : names) {
+            String value = request.getHeader(name);
+            if (!isBlank(value)) return value.trim();
+        }
+        return null;
+    }
+
+    private static String traceIdFromTraceparent(String traceparent) {
+        if (traceparent == null) return null;
+        String[] parts = traceparent.trim().split("-");
+        return parts.length >= 2 && parts[1].length() == 32 ? parts[1] : null;
+    }
+
+    private static String parentSpanIdFromTraceparent(String traceparent) {
+        if (traceparent == null) return null;
+        String[] parts = traceparent.trim().split("-");
+        return parts.length >= 3 && parts[2].length() == 16 ? parts[2] : null;
+    }
+
+    static boolean isBlank(String value) {
+        return value == null || value.isBlank();
+    }
+
+    private static String randomHex(int bytes) {
+        byte[] data = new byte[bytes];
+        RANDOM.nextBytes(data);
+        StringBuilder out = new StringBuilder(bytes * 2);
+        for (byte b : data) out.append(String.format("%02x", b));
+        return out.toString();
+    }
+}

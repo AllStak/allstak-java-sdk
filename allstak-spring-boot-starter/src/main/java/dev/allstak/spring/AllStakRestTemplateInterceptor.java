@@ -10,7 +10,6 @@ import org.springframework.http.client.ClientHttpResponse;
 
 import java.io.IOException;
 import java.time.Instant;
-import java.util.UUID;
 
 /**
  * RestTemplate interceptor that captures outbound HTTP requests for AllStak monitoring.
@@ -32,6 +31,12 @@ public class AllStakRestTemplateInterceptor implements ClientHttpRequestIntercep
         if (ctx != null) {
             traceId = ctx.getTraceId();
         }
+        if (traceId == null || traceId.isBlank()) {
+            traceId = AllStakTraceHeaders.randomTraceId();
+        }
+        String requestId = AllStakTraceHeaders.randomTraceId();
+        String spanId = AllStakTraceHeaders.randomSpanId();
+        AllStakTraceHeaders.apply(request.getHeaders(), traceId, requestId, spanId);
 
         ClientHttpResponse response;
         try {
@@ -47,10 +52,9 @@ public class AllStakRestTemplateInterceptor implements ClientHttpRequestIntercep
         }
 
         long durationMs = System.currentTimeMillis() - start;
-        String spanId = UUID.randomUUID().toString().substring(0, 16);
-
         HttpRequestItem item = HttpRequestItem.builder()
-                .traceId(traceId != null ? traceId : UUID.randomUUID().toString())
+                .traceId(traceId)
+                .requestId(requestId)
                 .spanId(spanId)
                 .direction("outbound")
                 .method(request.getMethod().name())
