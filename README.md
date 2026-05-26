@@ -69,8 +69,6 @@ AllStak.shutdown();
 | `allstak.capture-logs` | Captures logs. |
 | `allstak.capture-db-queries` | Captures JDBC queries. |
 
-Set `ALLSTAK_HOST` only when using a self-hosted AllStak ingest endpoint.
-
 ## Privacy
 
 The SDK redacts common sensitive headers and fields. Avoid putting secrets in custom metadata or log messages.
