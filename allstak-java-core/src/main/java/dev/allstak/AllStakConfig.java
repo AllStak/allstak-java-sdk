@@ -47,7 +47,12 @@ public final class AllStakConfig {
     private AllStakConfig(Builder builder) {
         this.apiKey = builder.apiKey;
         this.environment = builder.environment != null ? builder.environment : envOr("ALLSTAK_ENVIRONMENT", "production");
-        this.release = builder.release != null ? builder.release : envOrNull("ALLSTAK_RELEASE", "VERCEL_GIT_COMMIT_SHA", "RAILWAY_GIT_COMMIT_SHA", "RENDER_GIT_COMMIT");
+        // Release resolution, highest precedence first:
+        //   1. explicit builder.release        (always wins)
+        //   2. conventional CI env vars
+        //   3. automatic git-describe detection (CI-free, gated by autoDetectRelease)
+        //   4. SDK_VERSION fallback             (so release is never empty when detection is on)
+        this.release = resolveRelease(builder);
         this.flushIntervalMs = builder.flushIntervalMs;
         this.bufferSize = builder.bufferSize;
         this.debug = builder.debug;
@@ -64,6 +69,27 @@ public final class AllStakConfig {
         this.beforeSend = builder.beforeSend;
         this.sampleRate = builder.sampleRate;
         this.tracesSampleRate = builder.tracesSampleRate;
+    }
+
+    private static String resolveRelease(Builder builder) {
+        return resolveRelease(builder.release, builder.autoDetectRelease, ReleaseDetector::detectCached);
+    }
+
+    /**
+     * Pure, seamable release resolution. Order, highest precedence first:
+     * explicit value, CI env vars, automatic detection (the {@code detected}
+     * supplier), then the {@link #SDK_VERSION} constant. Steps 3 and 4 only run
+     * when {@code autoDetect} is true. The {@code detected} supplier is the
+     * seam: tests pass a fake instead of the real git shell-out.
+     */
+    static String resolveRelease(String explicit, boolean autoDetect, java.util.function.Supplier<String> detected) {
+        if (explicit != null && !explicit.isEmpty()) return explicit;
+        String env = envOrNull("ALLSTAK_RELEASE", "VERCEL_GIT_COMMIT_SHA", "RAILWAY_GIT_COMMIT_SHA", "RENDER_GIT_COMMIT");
+        if (env != null) return env;
+        if (!autoDetect) return null;
+        String auto = detected != null ? detected.get() : null;
+        if (auto != null && !auto.isEmpty()) return auto;
+        return SDK_VERSION;
     }
 
     private static String envOr(String key, String def) {
@@ -171,6 +197,7 @@ public final class AllStakConfig {
         private String sdkName;
         private String sdkVersion;
         private boolean installUncaughtExceptionHandler = true;
+        private boolean autoDetectRelease = true;
         private Function<Object, Object> beforeSend;
         private double sampleRate = 1.0;
         private Double tracesSampleRate;
@@ -194,6 +221,13 @@ public final class AllStakConfig {
         public Builder sdkVersion(String sdkVersion) { this.sdkVersion = sdkVersion; return this; }
         /** Opt out of (or back into) the global uncaught-exception handler install. Default true. */
         public Builder installUncaughtExceptionHandler(boolean install) { this.installUncaughtExceptionHandler = install; return this; }
+        /**
+         * Gate automatic, CI-free release detection and the SDK-version
+         * fallback (steps 3 and 4 of release resolution). Default {@code true}.
+         * When {@code false}, release stays null unless an explicit value or a
+         * conventional CI env var provided one.
+         */
+        public Builder autoDetectRelease(boolean autoDetectRelease) { this.autoDetectRelease = autoDetectRelease; return this; }
         /**
          * Callback invoked just before an event is sent. Return the event
          * (modified or not) to keep it, or {@code null} to drop it. Receives an

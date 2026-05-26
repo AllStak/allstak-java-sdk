@@ -71,6 +71,57 @@ class AllStakConfigTest {
         assertThat(config.getBufferSize()).isEqualTo(500);
         assertThat(config.isDebug()).isFalse();
         assertThat(config.getEnvironment()).isEqualTo("production");
+        // With auto-detection on (default), release is never empty: it resolves
+        // to a git-describe value (in a source checkout) or the SDK_VERSION
+        // fallback. It must not be null.
+        assertThat(config.getRelease()).isNotNull();
+    }
+
+    // --- Release resolution precedence (explicit > env > detected > version) ---
+    // These exercise the pure seamable resolver so they need no real repo.
+
+    @Test
+    void explicitReleaseAlwaysWins() {
+        // Even with a "detected" value available, explicit wins.
+        String r = AllStakConfig.resolveRelease("explicit-v1", true, () -> "detected-sha");
+        assertThat(r).isEqualTo("explicit-v1");
+    }
+
+    @Test
+    void detectedUsedWhenNoExplicitOrEnv() {
+        // No explicit value; env vars are not set in the test JVM, so the
+        // detected supplier wins over the version fallback.
+        String r = AllStakConfig.resolveRelease(null, true, () -> "abc1234-dirty");
+        assertThat(r).isEqualTo("abc1234-dirty");
+    }
+
+    @Test
+    void fallsBackToSdkVersionWhenDetectionEmpty() {
+        String r = AllStakConfig.resolveRelease(null, true, () -> null);
+        assertThat(r).isEqualTo(AllStakConfig.SDK_VERSION);
+    }
+
+    @Test
+    void fallsBackToSdkVersionWhenDetectorThrowsNothingCrashes() {
+        // The resolver only sees the supplier result; a throwing git runner is
+        // already swallowed inside ReleaseDetector.parse (covered separately).
+        String r = AllStakConfig.resolveRelease(null, true, () -> "");
+        assertThat(r).isEqualTo(AllStakConfig.SDK_VERSION);
+    }
+
+    @Test
+    void optOutDisablesDetectionAndFallback() {
+        String r = AllStakConfig.resolveRelease(null, false, () -> "detected-sha");
+        assertThat(r).isNull();
+    }
+
+    @Test
+    void optOutLeavesReleaseNullViaBuilder() {
+        AllStakConfig config = AllStakConfig.builder()
+                .apiKey("test")
+                .autoDetectRelease(false)
+                .build();
+        // No explicit release, env vars unset in test JVM, detection off.
         assertThat(config.getRelease()).isNull();
     }
 }
