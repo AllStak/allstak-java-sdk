@@ -24,6 +24,7 @@ public final class AllStakClient {
     private static final String PATH_HEARTBEAT = "/ingest/v1/heartbeat";
     private static final String PATH_DB_QUERIES = "/ingest/v1/db";
     private static final String PATH_SPANS = "/ingest/v1/spans";
+    private static final String PATH_RELEASES = "/ingest/v1/releases";
 
     private static final int HTTP_BATCH_MAX = 100;
     private static final int DB_BATCH_MAX = 100;
@@ -112,6 +113,7 @@ public final class AllStakClient {
         logFlusher.start(config.getFlushIntervalMs());
         httpFlusher.start(config.getFlushIntervalMs());
         dbQueryFlusher.start(config.getFlushIntervalMs());
+        registerRuntimeRelease();
 
         // Install the global uncaught-exception handler for background / non-web
         // threads (chains the previously-installed default handler). Opt-out via
@@ -122,6 +124,37 @@ public final class AllStakClient {
 
         SdkLogger.debug("AllStak SDK initialized — host={}, env={}, release={}",
                 config.getHost(), config.getEnvironment(), config.getRelease());
+    }
+
+    private void registerRuntimeRelease() {
+        if (!config.isAutoRegisterRelease() || config.getRelease() == null || config.getRelease().isBlank()) return;
+        if (isLikelyTestRuntime()) return;
+
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("version", config.getRelease());
+        payload.put("environment", config.getEnvironment());
+        payload.put("commitSha", config.getCommitSha());
+        payload.put("branch", config.getBranch());
+        payload.put("author", null);
+        payload.put("message", null);
+
+        Thread thread = new Thread(() -> {
+            try {
+                transport.send(PATH_RELEASES, payload);
+            } catch (Throwable t) {
+                SdkLogger.debug("Release registration failed: {}", t.getMessage());
+            }
+        }, "allstak-release-registration");
+        thread.setDaemon(true);
+        thread.start();
+    }
+
+    private static boolean isLikelyTestRuntime() {
+        String classpath = System.getProperty("java.class.path", "").toLowerCase(Locale.ROOT);
+        return classpath.contains("surefire")
+                || classpath.contains("junit")
+                || classpath.contains("test-classes")
+                || System.getProperty("surefire.test.class.path") != null;
     }
 
     // =========================================================================

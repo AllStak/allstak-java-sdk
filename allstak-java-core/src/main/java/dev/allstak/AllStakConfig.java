@@ -37,6 +37,7 @@ public final class AllStakConfig {
     private final String platform;
     private final String sdkName;
     private final String sdkVersion;
+    private final boolean autoRegisterRelease;
     // Global uncaught-exception capture (background / non-web threads).
     private final boolean installUncaughtExceptionHandler;
     // Event hooks & sampling.
@@ -65,6 +66,7 @@ public final class AllStakConfig {
         this.platform = builder.platform != null ? builder.platform : "jvm";
         this.sdkName = builder.sdkName != null ? builder.sdkName : SDK_NAME;
         this.sdkVersion = builder.sdkVersion != null ? builder.sdkVersion : SDK_VERSION;
+        this.autoRegisterRelease = builder.autoRegisterRelease;
         this.installUncaughtExceptionHandler = builder.installUncaughtExceptionHandler;
         this.beforeSend = builder.beforeSend;
         this.sampleRate = builder.sampleRate;
@@ -121,6 +123,7 @@ public final class AllStakConfig {
     public String getPlatform() { return platform; }
     public String getSdkName() { return sdkName; }
     public String getSdkVersion() { return sdkVersion; }
+    public boolean isAutoRegisterRelease() { return autoRegisterRelease; }
     /** Whether to install a global {@code Thread.setDefaultUncaughtExceptionHandler}. Default true. */
     public boolean isInstallUncaughtExceptionHandler() { return installUncaughtExceptionHandler; }
     /**
@@ -196,6 +199,7 @@ public final class AllStakConfig {
         private String platform;
         private String sdkName;
         private String sdkVersion;
+        private boolean autoRegisterRelease = true;
         private boolean installUncaughtExceptionHandler = true;
         private boolean autoDetectRelease = true;
         private Function<Object, Object> beforeSend;
@@ -219,6 +223,8 @@ public final class AllStakConfig {
         public Builder platform(String platform) { this.platform = platform; return this; }
         public Builder sdkName(String sdkName) { this.sdkName = sdkName; return this; }
         public Builder sdkVersion(String sdkVersion) { this.sdkVersion = sdkVersion; return this; }
+        /** Register the resolved release at SDK startup. Default true. */
+        public Builder autoRegisterRelease(boolean autoRegisterRelease) { this.autoRegisterRelease = autoRegisterRelease; return this; }
         /** Opt out of (or back into) the global uncaught-exception handler install. Default true. */
         public Builder installUncaughtExceptionHandler(boolean install) { this.installUncaughtExceptionHandler = install; return this; }
         /**
