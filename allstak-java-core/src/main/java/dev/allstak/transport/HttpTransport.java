@@ -60,15 +60,15 @@ public final class HttpTransport {
             return false;
         }
 
-        String body;
+        String wireJson;
         try {
-            body = objectMapper.writeValueAsString(payload);
+            wireJson = objectMapper.writeValueAsString(payload);
         } catch (Exception e) {
             SdkLogger.debug("Failed to serialize payload for {}: {}", path, e.getMessage());
             return false;
         }
 
-        SdkLogger.debug("Sending to {}{}: {}", baseUrl, path, body);
+        SdkLogger.debug("Sending to {}{}: event_bytes={}", baseUrl, path, wireJson.length());
 
         // Delay to apply before the NEXT attempt. When a server sends a valid
         // Retry-After header on a 429/503 we honor it instead of the fixed
@@ -96,20 +96,21 @@ public final class HttpTransport {
                         .header("Content-Type", "application/json")
                         .header("X-AllStak-Key", apiKey)
                         .timeout(REQUEST_TIMEOUT)
-                        .POST(HttpRequest.BodyPublishers.ofString(body))
+                        .POST(HttpRequest.BodyPublishers.ofString(wireJson))
                         .build();
 
                 HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
                 int status = response.statusCode();
 
-                SdkLogger.debug("Response from {}{}: {} {}", baseUrl, path, status, response.body());
+                SdkLogger.debug("Response from {}{}: status={} response_bytes={}",
+                        baseUrl, path, status, response.body() == null ? 0 : response.body().length());
 
                 if (status == 202) {
                     return true;
                 }
 
                 if (RetryPolicy.isAuthError(status)) {
-                    SdkLogger.warn("Invalid API key — disabling SDK. Response: {}", response.body());
+                    SdkLogger.warn("Invalid API key — disabling SDK");
                     disabled = true;
                     return false;
                 }
