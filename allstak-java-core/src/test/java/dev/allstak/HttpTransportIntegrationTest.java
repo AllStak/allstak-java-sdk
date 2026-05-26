@@ -226,6 +226,33 @@ class HttpTransportIntegrationTest {
     }
 
     @Test
+    void send_429WithRetryAfter_retriesAndSucceeds() {
+        // First attempt: 429 with Retry-After: 1 (honored instead of backoff),
+        // second attempt: 202.
+        wireMock.stubFor(post(urlEqualTo("/ingest/v1/logs"))
+                .inScenario("retry-after")
+                .whenScenarioStateIs("Started")
+                .willReturn(aResponse().withStatus(429).withHeader("Retry-After", "1"))
+                .willSetStateTo("attempt-2"));
+
+        wireMock.stubFor(post(urlEqualTo("/ingest/v1/logs"))
+                .inScenario("retry-after")
+                .whenScenarioStateIs("attempt-2")
+                .willReturn(aResponse().withStatus(202).withBody("{\"success\":true}")));
+
+        long start = System.currentTimeMillis();
+        boolean result = transport.send("/ingest/v1/logs",
+                new LogEvent("info", "test", null, null, null));
+        long elapsed = System.currentTimeMillis() - start;
+
+        assertThat(result).isTrue();
+        wireMock.verify(2, postRequestedFor(urlEqualTo("/ingest/v1/logs")));
+        // Honored ~1s Retry-After rather than the ~1000-1500ms backoff for
+        // attempt 1; mainly assert it waited roughly a second (not instant).
+        assertThat(elapsed).isGreaterThanOrEqualTo(900L);
+    }
+
+    @Test
     void send_networkError_retriesUpToMaxAttempts() {
         // Use an unreachable port to simulate network error
         HttpTransport badTransport = new HttpTransport("http://localhost:1", "test-key");

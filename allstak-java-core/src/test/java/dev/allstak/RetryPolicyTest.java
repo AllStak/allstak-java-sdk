@@ -5,6 +5,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
+import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+
 import static org.assertj.core.api.Assertions.*;
 
 class RetryPolicyTest {
@@ -66,5 +72,89 @@ class RetryPolicyTest {
         assertThat(RetryPolicy.isAuthError(401)).isTrue();
         assertThat(RetryPolicy.isAuthError(403)).isFalse();
         assertThat(RetryPolicy.isAuthError(200)).isFalse();
+    }
+
+    // =========================================================================
+    // Retry-After parsing (pure, no real sleeping)
+    // =========================================================================
+
+    private static final Instant NOW = Instant.parse("2026-05-26T12:00:00Z");
+
+    @Test
+    void parseRetryAfter_deltaSeconds() {
+        assertThat(RetryPolicy.parseRetryAfter("2", NOW)).isEqualTo(Duration.ofSeconds(2));
+    }
+
+    @Test
+    void parseRetryAfter_deltaSecondsZero() {
+        // "0" is a valid integer => zero delay (caller treats ZERO as "fall back",
+        // which is acceptable: no wait either way).
+        assertThat(RetryPolicy.parseRetryAfter("0", NOW)).isEqualTo(Duration.ZERO);
+    }
+
+    @Test
+    void parseRetryAfter_deltaSecondsWithWhitespace() {
+        assertThat(RetryPolicy.parseRetryAfter("  120  ", NOW)).isEqualTo(Duration.ofSeconds(120));
+    }
+
+    @Test
+    void parseRetryAfter_httpDateInFuture_returnsDelta() {
+        // 90 seconds after NOW
+        Instant target = NOW.plusSeconds(90);
+        String httpDate = DateTimeFormatter.RFC_1123_DATE_TIME
+                .format(ZonedDateTime.ofInstant(target, ZoneOffset.UTC));
+        assertThat(RetryPolicy.parseRetryAfter(httpDate, NOW)).isEqualTo(Duration.ofSeconds(90));
+    }
+
+    @Test
+    void parseRetryAfter_httpDateLiteral_returnsDelta() {
+        // Fixed example from RFC; delta measured from a fixed "now".
+        Instant now = Instant.parse("2015-10-21T07:27:00Z");
+        String httpDate = "Wed, 21 Oct 2015 07:28:00 GMT"; // +60s
+        assertThat(RetryPolicy.parseRetryAfter(httpDate, now)).isEqualTo(Duration.ofSeconds(60));
+    }
+
+    @Test
+    void parseRetryAfter_httpDateInPast_returnsZero() {
+        Instant target = NOW.minusSeconds(60);
+        String httpDate = DateTimeFormatter.RFC_1123_DATE_TIME
+                .format(ZonedDateTime.ofInstant(target, ZoneOffset.UTC));
+        assertThat(RetryPolicy.parseRetryAfter(httpDate, NOW)).isEqualTo(Duration.ZERO);
+    }
+
+    @Test
+    void parseRetryAfter_null_returnsZero() {
+        assertThat(RetryPolicy.parseRetryAfter(null, NOW)).isEqualTo(Duration.ZERO);
+    }
+
+    @Test
+    void parseRetryAfter_empty_returnsZero() {
+        assertThat(RetryPolicy.parseRetryAfter("", NOW)).isEqualTo(Duration.ZERO);
+        assertThat(RetryPolicy.parseRetryAfter("   ", NOW)).isEqualTo(Duration.ZERO);
+    }
+
+    @Test
+    void parseRetryAfter_garbage_returnsZero() {
+        assertThat(RetryPolicy.parseRetryAfter("soon", NOW)).isEqualTo(Duration.ZERO);
+        assertThat(RetryPolicy.parseRetryAfter("12.5", NOW)).isEqualTo(Duration.ZERO);
+        assertThat(RetryPolicy.parseRetryAfter("not-a-date", NOW)).isEqualTo(Duration.ZERO);
+    }
+
+    @Test
+    void parseRetryAfter_negativeSeconds_returnsZero() {
+        assertThat(RetryPolicy.parseRetryAfter("-5", NOW)).isEqualTo(Duration.ZERO);
+    }
+
+    @Test
+    void parseRetryAfter_overMax_clampsTo300s() {
+        assertThat(RetryPolicy.parseRetryAfter("99999", NOW)).isEqualTo(Duration.ofSeconds(300));
+    }
+
+    @Test
+    void parseRetryAfter_httpDateOverMax_clampsTo300s() {
+        Instant target = NOW.plusSeconds(10_000);
+        String httpDate = DateTimeFormatter.RFC_1123_DATE_TIME
+                .format(ZonedDateTime.ofInstant(target, ZoneOffset.UTC));
+        assertThat(RetryPolicy.parseRetryAfter(httpDate, NOW)).isEqualTo(Duration.ofSeconds(300));
     }
 }

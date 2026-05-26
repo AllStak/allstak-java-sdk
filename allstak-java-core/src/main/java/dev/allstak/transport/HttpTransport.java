@@ -9,6 +9,8 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.time.Instant;
+import java.util.Optional;
 
 /**
  * HTTP transport layer for sending payloads to AllStak backend.
@@ -68,8 +70,17 @@ public final class HttpTransport {
 
         SdkLogger.debug("Sending to {}{}: {}", baseUrl, path, body);
 
+        // Delay to apply before the NEXT attempt. When a server sends a valid
+        // Retry-After header on a 429/503 we honor it instead of the fixed
+        // exponential backoff schedule; otherwise this stays negative and we
+        // fall back to RetryPolicy.delayForAttempt(...).
+        long retryAfterOverrideMs = -1;
+
         for (int attempt = 0; attempt < RetryPolicy.maxAttempts(); attempt++) {
-            long delay = RetryPolicy.delayForAttempt(attempt);
+            long delay = retryAfterOverrideMs >= 0
+                    ? retryAfterOverrideMs
+                    : RetryPolicy.delayForAttempt(attempt);
+            retryAfterOverrideMs = -1; // consume; default back to schedule
             if (delay > 0) {
                 try {
                     Thread.sleep(delay);
@@ -109,6 +120,18 @@ public final class HttpTransport {
                 }
 
                 if (RetryPolicy.isRetryable(status)) {
+                    // Honor Retry-After (429/503) when the server provides a
+                    // valid value; otherwise fall back to the backoff schedule.
+                    Optional<String> retryAfter = response.headers().firstValue("Retry-After");
+                    if (retryAfter.isPresent()) {
+                        Duration parsed = RetryPolicy.parseRetryAfter(retryAfter.get(), Instant.now());
+                        if (!parsed.isZero()) {
+                            retryAfterOverrideMs = parsed.toMillis();
+                            SdkLogger.debug("Retryable error {} for {} — honoring Retry-After {}ms — attempt {}/{}",
+                                    status, path, retryAfterOverrideMs, attempt + 1, RetryPolicy.maxAttempts());
+                            continue;
+                        }
+                    }
                     SdkLogger.debug("Retryable error {} for {} — attempt {}/{}", status, path, attempt + 1, RetryPolicy.maxAttempts());
                     continue;
                 }
