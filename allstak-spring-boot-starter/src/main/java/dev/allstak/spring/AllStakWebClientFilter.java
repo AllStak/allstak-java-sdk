@@ -43,7 +43,7 @@ public class AllStakWebClientFilter implements ExchangeFilterFunction {
         final String spanId = AllStakTraceHeaders.randomSpanId();
         final URI uri = request.url();
         ClientRequest tracedRequest = ClientRequest.from(request)
-                .headers(h -> AllStakTraceHeaders.apply(h, traceId, requestId, spanId))
+                .headers(h -> AllStakTraceHeaders.apply(h, traceId, requestId, spanId, client.traceparentSampledFlag()))
                 .build();
 
         return next.exchange(tracedRequest)

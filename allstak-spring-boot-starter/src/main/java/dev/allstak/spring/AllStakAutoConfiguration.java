@@ -26,8 +26,9 @@ public class AllStakAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    public AllStakConfig allStakConfig(AllStakProperties props) {
-        return AllStakConfig.builder()
+    public AllStakConfig allStakConfig(AllStakProperties props,
+                                       org.springframework.beans.factory.ObjectProvider<AllStakBeforeSend> beforeSend) {
+        AllStakConfig.Builder builder = AllStakConfig.builder()
                 .apiKey(props.getApiKey())
                 .environment(props.getEnvironment())
                 .release(props.getRelease())
@@ -35,7 +36,15 @@ public class AllStakAutoConfiguration {
                 .flushIntervalMs(props.getFlushIntervalMs())
                 .bufferSize(props.getBufferSize())
                 .serviceName(props.getServiceName())
-                .build();
+                .installUncaughtExceptionHandler(props.isInstallUncaughtExceptionHandler())
+                .sampleRate(props.getSampleRate())
+                .tracesSampleRate(props.getTracesSampleRate());
+        // Optional user-supplied beforeSend hook, registered as a bean.
+        AllStakBeforeSend hook = beforeSend.getIfAvailable();
+        if (hook != null) {
+            builder.beforeSend(hook::beforeSend);
+        }
+        return builder.build();
     }
 
     /**

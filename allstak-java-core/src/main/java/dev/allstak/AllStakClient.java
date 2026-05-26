@@ -3,6 +3,7 @@ package dev.allstak;
 import dev.allstak.buffer.RingBuffer;
 import dev.allstak.internal.FlushWorker;
 import dev.allstak.internal.SdkLogger;
+import dev.allstak.internal.UncaughtExceptionCapture;
 import dev.allstak.masking.DataMasker;
 import dev.allstak.model.*;
 import dev.allstak.transport.HttpTransport;
@@ -53,6 +54,10 @@ public final class AllStakClient {
     private volatile UserContext currentUser;
 
     private final AtomicBoolean shutdown = new AtomicBoolean(false);
+    private boolean uncaughtHandlerInstalled = false;
+
+    // Sampling RNG seam — returns a value in [0.0, 1.0). Injectable for tests.
+    private final java.util.function.DoubleSupplier sampler;
 
     public AllStakClient(AllStakConfig config) {
         this(config, new HttpTransport(config.getHost(), config.getApiKey()));
@@ -60,8 +65,15 @@ public final class AllStakClient {
 
     // Visible for testing — allows injecting a custom transport
     public AllStakClient(AllStakConfig config, HttpTransport transport) {
+        this(config, transport, () -> java.util.concurrent.ThreadLocalRandom.current().nextDouble());
+    }
+
+    // Visible for testing — allows injecting a deterministic sampling source
+    public AllStakClient(AllStakConfig config, HttpTransport transport,
+                         java.util.function.DoubleSupplier sampler) {
         this.config = config;
         this.transport = transport;
+        this.sampler = sampler;
 
         SdkLogger.setDebug(config.isDebug());
 
@@ -101,6 +113,13 @@ public final class AllStakClient {
         httpFlusher.start(config.getFlushIntervalMs());
         dbQueryFlusher.start(config.getFlushIntervalMs());
 
+        // Install the global uncaught-exception handler for background / non-web
+        // threads (chains the previously-installed default handler). Opt-out via
+        // config. Idempotent — a second client install is a no-op.
+        if (config.isInstallUncaughtExceptionHandler()) {
+            this.uncaughtHandlerInstalled = UncaughtExceptionCapture.install(this);
+        }
+
         SdkLogger.debug("AllStak SDK initialized — host={}, env={}, release={}",
                 config.getHost(), config.getEnvironment(), config.getRelease());
     }
@@ -121,18 +140,24 @@ public final class AllStakClient {
         try {
             if (shutdown.get() || transport.isDisabled()) return;
 
+            // 1. sample_rate drop first — skip dropped events before any work.
+            if (isSampledOut(config.getSampleRate())) {
+                SdkLogger.debug("Exception dropped by sampleRate={}", config.getSampleRate());
+                return;
+            }
+
             String exceptionClass = throwable.getClass().getName();
             String message = throwable.getMessage() != null ? throwable.getMessage() : exceptionClass;
             List<String> stackTrace = extractStackTrace(throwable);
 
             // Merge release-tracking tags (sdk.name/version, platform, dist,
-            // commit.sha/branch) into metadata. Caller-supplied metadata wins,
-            // then masking runs across the merged result so secrets-in-tags
-            // are still scrubbed.
+            // commit.sha/branch) into metadata. Caller-supplied metadata wins.
+            // Masking is deferred until AFTER beforeSend so the callback sees
+            // the real values and the order is: sample_rate -> beforeSend ->
+            // masking -> transport.
             Map<String, Object> mergedMetaErr = new java.util.LinkedHashMap<>();
             for (var e : config.releaseTags().entrySet()) mergedMetaErr.put(e.getKey(), e.getValue());
             if (metadata != null) mergedMetaErr.putAll(metadata);
-            Map<String, Object> maskedMetadata = DataMasker.maskMetadata(mergedMetaErr);
 
             // Attach request context if available on this thread
             RequestContext reqCtx = currentRequestContext.get();
@@ -176,7 +201,7 @@ public final class AllStakClient {
                     config.getRelease(),
                     null, // sessionId — not applicable for server SDK
                     currentUser,
-                    maskedMetadata,
+                    mergedMetaErr,
                     traceId,
                     eventReqCtx,
                     eventBreadcrumbs,
@@ -187,8 +212,18 @@ public final class AllStakClient {
                     frames.isEmpty() ? null : frames
             );
 
-            // Errors are sent immediately — no buffering
-            transport.send(PATH_ERRORS, event);
+            // 2. beforeSend — may modify or drop (null). Fail-open if it throws.
+            ErrorEvent processed = applyBeforeSend(event);
+            if (processed == null) {
+                SdkLogger.debug("Exception dropped by beforeSend");
+                return;
+            }
+
+            // 3. masking — scrub PII from metadata after beforeSend ran.
+            ErrorEvent masked = withMaskedMetadata(processed);
+
+            // 4. transport — errors are sent immediately, no buffering.
+            transport.send(PATH_ERRORS, masked);
         } catch (Exception e) {
             SdkLogger.debug("Failed to capture exception: {}", e.getMessage());
         }
@@ -223,21 +258,40 @@ public final class AllStakClient {
                 return;
             }
 
+            // 1. sample_rate drop first.
+            if (isSampledOut(config.getSampleRate())) {
+                SdkLogger.debug("Log dropped by sampleRate={}", config.getSampleRate());
+                return;
+            }
+
             if (config.isAutoBreadcrumbs() && ("warn".equals(level) || "error".equals(level) || "fatal".equals(level))) {
                 breadcrumbBuffer.add(new Breadcrumb("log", message, level, metadata));
             }
 
-            // Merge release-tracking tags into log metadata too.
+            // Merge release-tracking tags into log metadata too. Masking is
+            // deferred until after beforeSend (sample_rate -> beforeSend ->
+            // masking -> transport).
             Map<String, Object> mergedMetaLog = new java.util.LinkedHashMap<>();
             for (var e : config.releaseTags().entrySet()) mergedMetaLog.put(e.getKey(), e.getValue());
             if (metadata != null) mergedMetaLog.putAll(metadata);
-            Map<String, Object> maskedMetadata = DataMasker.maskMetadata(mergedMetaLog);
             String svc = service != null ? service : config.getServiceName();
             String env = environment != null ? environment : config.getEnvironment();
 
             LogEvent event = new LogEvent(level, message, svc, traceId, env, spanId,
-                    requestId, userId, errorId, maskedMetadata, config.getRelease());
-            logBuffer.add(event);
+                    requestId, userId, errorId, mergedMetaLog, config.getRelease());
+
+            // 2. beforeSend — may modify or drop (null). Fail-open if it throws.
+            LogEvent processed = applyBeforeSend(event);
+            if (processed == null) {
+                SdkLogger.debug("Log dropped by beforeSend");
+                return;
+            }
+
+            // 3. masking — scrub PII from metadata after beforeSend ran.
+            LogEvent masked = withMaskedMetadata(processed);
+
+            // 4. transport — buffered, flushed on timer/capacity.
+            logBuffer.add(masked);
             logFlusher.checkCapacityFlush();
         } catch (Exception e) {
             SdkLogger.debug("Failed to capture log: {}", e.getMessage());
@@ -417,6 +471,12 @@ public final class AllStakClient {
                             long durationMs, long startTimeMillis, long endTimeMillis,
                             String service, String environment, Map<String, String> tags) {
         if (shutdown.get() || transport.isDisabled()) return;
+        // Span sampling — when tracesSampleRate is configured, drop unsampled
+        // spans. Null keeps the legacy always-on behavior.
+        if (!isSpanSampled()) {
+            SdkLogger.debug("Span dropped by tracesSampleRate={}", config.getTracesSampleRate());
+            return;
+        }
         try {
             Map<String, Object> span = new LinkedHashMap<>();
             span.put("traceId", traceId);
@@ -465,6 +525,10 @@ public final class AllStakClient {
     public void shutdown() {
         if (shutdown.compareAndSet(false, true)) {
             SdkLogger.debug("AllStak SDK shutting down...");
+            if (uncaughtHandlerInstalled) {
+                UncaughtExceptionCapture.uninstall();
+                uncaughtHandlerInstalled = false;
+            }
             logFlusher.shutdown();
             httpFlusher.shutdown();
             dbQueryFlusher.shutdown();
@@ -537,6 +601,79 @@ public final class AllStakClient {
         }
 
         return result;
+    }
+
+    // =========================================================================
+    // Sampling & beforeSend pipeline
+    // =========================================================================
+
+    /**
+     * Deterministic-at-the-bounds sampling decision for error/message events.
+     * rate &gt;= 1.0 always keeps, rate &lt;= 0.0 always drops, otherwise a single
+     * RNG draw decides. The RNG is injectable (see test constructor).
+     *
+     * @return true if the event should be DROPPED.
+     */
+    private boolean isSampledOut(double rate) {
+        if (rate >= 1.0) return false;
+        if (rate <= 0.0) return true;
+        return sampler.getAsDouble() >= rate;
+    }
+
+    /**
+     * Span-creation sampling decision driven by {@code tracesSampleRate}.
+     * Null = always sampled (legacy always-on behavior).
+     *
+     * @return true if the span IS sampled (created / traceparent flag {@code -01}).
+     */
+    public boolean isSpanSampled() {
+        Double rate = config.getTracesSampleRate();
+        if (rate == null) return true;          // legacy always-on
+        if (rate >= 1.0) return true;
+        if (rate <= 0.0) return false;
+        return sampler.getAsDouble() < rate;
+    }
+
+    /**
+     * The W3C traceparent sampled flag for the current config: {@code "01"} when
+     * the span is sampled, {@code "00"} when not. Use to build the trace flags
+     * byte in a {@code traceparent} header.
+     */
+    public String traceparentSampledFlag() {
+        return isSpanSampled() ? "01" : "00";
+    }
+
+    @SuppressWarnings("unchecked")
+    private <T> T applyBeforeSend(T event) {
+        java.util.function.Function<Object, Object> hook = config.getBeforeSend();
+        if (hook == null) return event;
+        try {
+            Object result = hook.apply(event);
+            // null is a deliberate drop; any non-null is the (possibly modified) event.
+            return (T) result;
+        } catch (Throwable t) {
+            // Fail-open: log and send the original event unmodified.
+            SdkLogger.debug("beforeSend threw — sending original event: {}", t.getMessage());
+            return event;
+        }
+    }
+
+    private static ErrorEvent withMaskedMetadata(ErrorEvent e) {
+        if (e.getMetadata() == null) return e;
+        Map<String, Object> masked = DataMasker.maskMetadata(e.getMetadata());
+        return new ErrorEvent(
+                e.getExceptionClass(), e.getMessage(), e.getStackTrace(), e.getLevel(),
+                e.getEnvironment(), e.getRelease(), e.getSessionId(), e.getUser(),
+                masked, e.getTraceId(), e.getRequestContext(), e.getBreadcrumbs(),
+                e.getPlatform(), e.getSdkName(), e.getSdkVersion(), e.getDist(), e.getFrames());
+    }
+
+    private static LogEvent withMaskedMetadata(LogEvent e) {
+        if (e.getMetadata() == null) return e;
+        Map<String, Object> masked = DataMasker.maskMetadata(e.getMetadata());
+        return new LogEvent(e.getLevel(), e.getMessage(), e.getService(), e.getTraceId(),
+                e.getEnvironment(), e.getSpanId(), e.getRequestId(), e.getUserId(),
+                e.getErrorId(), masked, e.getRelease());
     }
 
     private static boolean isValidLogLevel(String level) {

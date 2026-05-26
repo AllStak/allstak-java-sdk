@@ -67,11 +67,21 @@ final class AllStakTraceHeaders {
     }
 
     static void apply(HttpHeaders target, String traceId, String requestId, String spanId) {
+        // Backwards-compatible: defaults to the sampled flag ("01").
+        apply(target, traceId, requestId, spanId, "01");
+    }
+
+    /**
+     * @param sampledFlag the W3C trace flags byte: {@code "01"} sampled,
+     *                    {@code "00"} not sampled.
+     */
+    static void apply(HttpHeaders target, String traceId, String requestId, String spanId, String sampledFlag) {
+        String flag = isBlank(sampledFlag) ? "01" : sampledFlag;
         target.set("X-AllStak-Trace-Id", traceId);
         if (!isBlank(requestId)) target.set("X-AllStak-Request-Id", requestId);
         if (!isBlank(spanId)) {
             target.set("X-AllStak-Span-Id", spanId);
-            target.set("traceparent", "00-" + traceId + "-" + spanId.substring(0, Math.min(16, spanId.length())) + "-01");
+            target.set("traceparent", "00-" + traceId + "-" + spanId.substring(0, Math.min(16, spanId.length())) + "-" + flag);
         }
         target.set("baggage", mergeBaggage(target.getFirst("baggage"), traceId, requestId, spanId));
         target.set("AllStak-Baggage", baggage(traceId, requestId, spanId));

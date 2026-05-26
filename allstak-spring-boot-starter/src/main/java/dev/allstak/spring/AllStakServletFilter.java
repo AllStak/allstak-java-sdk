@@ -62,7 +62,7 @@ public class AllStakServletFilter extends OncePerRequestFilter {
         responseWrapper.setHeader("X-AllStak-Trace-Id", traceId);
         responseWrapper.setHeader("X-AllStak-Request-Id", headers.requestId);
         responseWrapper.setHeader("X-AllStak-Span-Id", spanId);
-        responseWrapper.setHeader("traceparent", "00-" + traceId + "-" + spanId + "-01");
+        responseWrapper.setHeader("traceparent", "00-" + traceId + "-" + spanId + "-" + client.traceparentSampledFlag());
         responseWrapper.setHeader("baggage", AllStakTraceHeaders.mergeBaggage(
                 requestWrapper.getHeader("baggage"), traceId, headers.requestId, spanId));
         responseWrapper.setHeader("AllStak-Baggage", AllStakTraceHeaders.baggage(traceId, headers.requestId, spanId));

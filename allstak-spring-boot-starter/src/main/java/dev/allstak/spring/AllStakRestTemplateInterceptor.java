@@ -36,7 +36,7 @@ public class AllStakRestTemplateInterceptor implements ClientHttpRequestIntercep
         }
         String requestId = AllStakTraceHeaders.randomTraceId();
         String spanId = AllStakTraceHeaders.randomSpanId();
-        AllStakTraceHeaders.apply(request.getHeaders(), traceId, requestId, spanId);
+        AllStakTraceHeaders.apply(request.getHeaders(), traceId, requestId, spanId, client.traceparentSampledFlag());
 
         ClientHttpResponse response;
         try {

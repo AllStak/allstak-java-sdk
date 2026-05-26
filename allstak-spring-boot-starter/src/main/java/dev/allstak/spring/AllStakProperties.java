@@ -44,6 +44,19 @@ public class AllStakProperties {
     private String commitSha;
     /** Git branch (auto-detected from GIT_BRANCH / VERCEL_GIT_COMMIT_REF when blank). */
     private String branch;
+    /** Install a global JVM uncaught-exception handler for background threads. Default true. */
+    private boolean installUncaughtExceptionHandler = true;
+    /** Error/message sampling rate in [0.0, 1.0]. Default 1.0 (keep everything). */
+    private double sampleRate = 1.0;
+    /** Span sampling rate in [0.0, 1.0]. Null (default) = always-on legacy behavior. */
+    private Double tracesSampleRate;
+
+    public boolean isInstallUncaughtExceptionHandler() { return installUncaughtExceptionHandler; }
+    public void setInstallUncaughtExceptionHandler(boolean installUncaughtExceptionHandler) { this.installUncaughtExceptionHandler = installUncaughtExceptionHandler; }
+    public double getSampleRate() { return sampleRate; }
+    public void setSampleRate(double sampleRate) { this.sampleRate = sampleRate; }
+    public Double getTracesSampleRate() { return tracesSampleRate; }
+    public void setTracesSampleRate(Double tracesSampleRate) { this.tracesSampleRate = tracesSampleRate; }
 
     public String getDist() { return dist; }
     public void setDist(String dist) { this.dist = dist; }
