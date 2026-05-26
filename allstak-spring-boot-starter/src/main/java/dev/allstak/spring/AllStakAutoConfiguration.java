@@ -180,6 +180,39 @@ public class AllStakAutoConfiguration {
         return "allstak-logback-registered";
     }
 
+    /**
+     * Log4j2 counterpart of the Logback registrar. Activated only when Log4j2
+     * core is the active backend and Logback is NOT on the classpath, so apps
+     * that use Logback never double-capture. Isolated in a nested configuration
+     * so the outer class never reflectively touches Log4j2 types when Log4j2 is
+     * absent (Spring eagerly reads all method signatures on auto-config classes
+     * regardless of per-method {@code @ConditionalOnClass}).
+     */
+    @org.springframework.context.annotation.Configuration
+    @ConditionalOnClass(name = "org.apache.logging.log4j.core.LoggerContext")
+    @org.springframework.boot.autoconfigure.condition.ConditionalOnMissingClass("ch.qos.logback.classic.Logger")
+    public static class Log4j2AutoConfiguration {
+
+        @Bean
+        @ConditionalOnProperty(prefix = "allstak", name = "capture-logs", havingValue = "true", matchIfMissing = true)
+        public Object allStakLog4j2AppenderRegistrar(AllStakClient client) {
+            try {
+                org.apache.logging.log4j.core.LoggerContext ctx =
+                    (org.apache.logging.log4j.core.LoggerContext) org.apache.logging.log4j.LogManager.getContext(false);
+                org.apache.logging.log4j.core.config.Configuration logConfig = ctx.getConfiguration();
+                AllStakLog4j2Appender appender = AllStakLog4j2Appender.create("allstak");
+                appender.start();
+                logConfig.addAppender(appender);
+                logConfig.getRootLogger().addAppender(appender, null, null);
+                ctx.updateLoggers();
+                SdkLogger.debug("AllStak Log4j2 appender registered");
+            } catch (Exception e) {
+                SdkLogger.debug("Failed to register Log4j2 appender: {}", e.getMessage());
+            }
+            return "allstak-log4j2-registered";
+        }
+    }
+
     @PreDestroy
     public void shutdown() {
         SdkLogger.debug("Spring context shutting down — flushing AllStak SDK");

@@ -78,6 +78,16 @@
             <version>1.4.14</version>
             <optional>true</optional>
         </dependency>
+        <!-- Log4j2 — optional, mirrors the logback scoping. Only the
+             AllStakLog4j2Appender + the Log4j2 registrar reference these types,
+             and both are classpath-guarded so logback-only apps never load them. -->
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-core</artifactId>
+            <!-- Version inherited from spring-boot-dependencies so log4j-core and
+                 log4j-api stay aligned (avoids a NoSuchMethod mismatch). -->
+            <optional>true</optional>
+        </dependency>
 
         <!-- Spring AOP — used by the @Scheduled auto-wrapper (ProxyFactory + CGLIB). -->
         <dependency>
