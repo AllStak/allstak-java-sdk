@@ -44,6 +44,13 @@ public final class AllStakConfig {
     private final Function<Object, Object> beforeSend;
     private final double sampleRate;
     private final Double tracesSampleRate;
+    // Release-health sessions.
+    private final boolean enableAutoSessionTracking;
+    // PII handling.
+    private final boolean sendDefaultPii;
+    // Per-transaction sampling + outbound trace-header allowlist.
+    private final dev.allstak.tracing.TracesSampler tracesSampler;
+    private final dev.allstak.tracing.TracePropagationDecider tracePropagationDecider;
 
     private AllStakConfig(Builder builder) {
         this.apiKey = builder.apiKey;
@@ -71,6 +78,10 @@ public final class AllStakConfig {
         this.beforeSend = builder.beforeSend;
         this.sampleRate = builder.sampleRate;
         this.tracesSampleRate = builder.tracesSampleRate;
+        this.enableAutoSessionTracking = builder.enableAutoSessionTracking;
+        this.sendDefaultPii = builder.sendDefaultPii;
+        this.tracesSampler = builder.tracesSampler;
+        this.tracePropagationDecider = new dev.allstak.tracing.TracePropagationDecider(builder.tracePropagationTargets);
     }
 
     private static String resolveRelease(Builder builder) {
@@ -142,6 +153,38 @@ public final class AllStakConfig {
      * {@code traceparent} sampled flag ({@code -01} sampled, {@code -00} not).
      */
     public Double getTracesSampleRate() { return tracesSampleRate; }
+    /**
+     * Whether the SDK should automatically start a release-health session on
+     * {@code AllStak.init} and end it on {@code AllStak.shutdown}. Default
+     * {@code true} for server-mode (one session per JVM). Disable for
+     * environments without a release identifier or where you want to
+     * manage sessions manually.
+     */
+    public boolean isEnableAutoSessionTracking() { return enableAutoSessionTracking; }
+    /**
+     * Whether to ship personally-identifying information by default.
+     *
+     * <p><b>Default {@code false}</b> — matches Sentry's privacy-by-default
+     * stance. When false the SDK strips {@code user.email} and {@code user.ip}
+     * on captured events, drops {@code Authorization} / {@code Cookie} headers
+     * on captured HTTP requests, and skips request/response body capture in
+     * the Servlet filter. Opt in only after auditing your {@code beforeSend}
+     * scrubbing path.
+     */
+    public boolean isSendDefaultPii() { return sendDefaultPii; }
+    /**
+     * Optional per-transaction sampler. When set, takes precedence over
+     * {@link #getTracesSampleRate()} for the transaction-start decision.
+     * Returns {@code null} ⇒ defer to the static rate.
+     */
+    public dev.allstak.tracing.TracesSampler getTracesSampler() { return tracesSampler; }
+    /**
+     * Outbound trace-propagation allowlist. The SDK only injects trace
+     * headers on outbound HTTP requests whose URL/host matches at least
+     * one of the configured patterns; default is "propagate everywhere".
+     * Use to keep your trace context from leaking to third-party domains.
+     */
+    public dev.allstak.tracing.TracePropagationDecider getTracePropagationDecider() { return tracePropagationDecider; }
 
     /**
      * Release-tracking tags merged into every event payload's metadata so
@@ -205,6 +248,10 @@ public final class AllStakConfig {
         private Function<Object, Object> beforeSend;
         private double sampleRate = 1.0;
         private Double tracesSampleRate;
+        private boolean enableAutoSessionTracking = true;
+        private boolean sendDefaultPii = false;
+        private dev.allstak.tracing.TracesSampler tracesSampler;
+        private java.util.List<String> tracePropagationTargets;
 
         private Builder() {}
 
@@ -244,6 +291,36 @@ public final class AllStakConfig {
         public Builder sampleRate(double sampleRate) { this.sampleRate = sampleRate; return this; }
         /** Span sampling rate in [0.0, 1.0], or {@code null} (default) for always-on. */
         public Builder tracesSampleRate(Double tracesSampleRate) { this.tracesSampleRate = tracesSampleRate; return this; }
+        /**
+         * Toggle automatic release-health session tracking. Default {@code true}.
+         * When enabled, the SDK opens one session per JVM at {@code init} and
+         * closes it on {@code shutdown}, marking it errored/crashed if events
+         * of that severity were captured.
+         */
+        public Builder enableAutoSessionTracking(boolean enable) { this.enableAutoSessionTracking = enable; return this; }
+        /**
+         * Opt in to shipping user.email, user.ip, request bodies, and
+         * Authorization/Cookie headers. Default {@code false}. Strongly
+         * recommend pairing with a {@code beforeSend} hook that further
+         * scrubs domain-specific PII before flipping this on.
+         */
+        public Builder sendDefaultPii(boolean sendDefaultPii) { this.sendDefaultPii = sendDefaultPii; return this; }
+        /**
+         * Per-transaction sampler. Receives a {@link dev.allstak.tracing.SamplingContext}
+         * built from the inbound request and returns a probability in
+         * {@code [0.0, 1.0]} or {@code null} to defer to {@link #tracesSampleRate(Double)}.
+         */
+        public Builder tracesSampler(dev.allstak.tracing.TracesSampler sampler) {
+            this.tracesSampler = sampler; return this;
+        }
+        /**
+         * Regex or substring patterns listing the outbound HTTP targets that
+         * the SDK is allowed to inject trace headers on. {@code null} or
+         * empty ⇒ propagate everywhere (default). Patterns are case-insensitive.
+         */
+        public Builder tracePropagationTargets(java.util.List<String> targets) {
+            this.tracePropagationTargets = targets; return this;
+        }
 
         public AllStakConfig build() {
             AllStakConfig config = new AllStakConfig(this);

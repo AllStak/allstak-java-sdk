@@ -6,6 +6,10 @@ import dev.allstak.internal.SdkLogger;
 import dev.allstak.internal.UncaughtExceptionCapture;
 import dev.allstak.masking.DataMasker;
 import dev.allstak.model.*;
+import dev.allstak.scope.MergedScope;
+import dev.allstak.scope.Scopes;
+import dev.allstak.session.SessionStatus;
+import dev.allstak.session.SessionTracker;
 import dev.allstak.transport.HttpTransport;
 
 import java.time.Instant;
@@ -56,6 +60,13 @@ public final class AllStakClient {
 
     private final AtomicBoolean shutdown = new AtomicBoolean(false);
     private boolean uncaughtHandlerInstalled = false;
+
+    /**
+     * Release-health session tracker. Non-null when
+     * {@link AllStakConfig#isEnableAutoSessionTracking()} is true (default).
+     * One session per JVM lifetime in the current single-mode implementation.
+     */
+    private final SessionTracker sessionTracker;
 
     // Sampling RNG seam — returns a value in [0.0, 1.0). Injectable for tests.
     private final java.util.function.DoubleSupplier sampler;
@@ -114,6 +125,16 @@ public final class AllStakClient {
         httpFlusher.start(config.getFlushIntervalMs());
         dbQueryFlusher.start(config.getFlushIntervalMs());
         registerRuntimeRelease();
+
+        // Open the release-health session for this JVM. Skipped under
+        // test classpaths (mirrors the release-registration guard) so
+        // unit tests don't hit /ingest/v1/sessions/start.
+        if (config.isEnableAutoSessionTracking() && !isLikelyTestRuntime()) {
+            this.sessionTracker = new SessionTracker(config, transport);
+            this.sessionTracker.start();
+        } else {
+            this.sessionTracker = null;
+        }
 
         // Install the global uncaught-exception handler for background / non-web
         // threads (chains the previously-installed default handler). Opt-out via
@@ -183,14 +204,20 @@ public final class AllStakClient {
             String message = throwable.getMessage() != null ? throwable.getMessage() : exceptionClass;
             List<String> stackTrace = extractStackTrace(throwable);
 
+            // Snapshot Global+Isolation+Current scopes once.
+            MergedScope scope = Scopes.mergedForCapture();
+
             // Merge release-tracking tags (sdk.name/version, platform, dist,
-            // commit.sha/branch) into metadata. Caller-supplied metadata wins.
-            // Masking is deferred until AFTER beforeSend so the callback sees
-            // the real values and the order is: sample_rate -> beforeSend ->
-            // masking -> transport.
+            // commit.sha/branch) into metadata. Caller-supplied metadata wins,
+            // then scope-supplied tags/contexts/extras layered on top so the
+            // dashboard sees them as filterable fields. Masking is deferred
+            // until AFTER beforeSend (sample_rate -> beforeSend -> masking -> transport).
             Map<String, Object> mergedMetaErr = new java.util.LinkedHashMap<>();
             for (var e : config.releaseTags().entrySet()) mergedMetaErr.put(e.getKey(), e.getValue());
             if (metadata != null) mergedMetaErr.putAll(metadata);
+            if (!scope.tags().isEmpty()) mergedMetaErr.put("tags", scope.tags());
+            if (!scope.contexts().isEmpty()) mergedMetaErr.put("contexts", scope.contexts());
+            if (!scope.extras().isEmpty()) mergedMetaErr.put("extras", scope.extras());
 
             // Attach request context if available on this thread
             RequestContext reqCtx = currentRequestContext.get();
@@ -205,9 +232,29 @@ public final class AllStakClient {
                             traceId)
                     : null;
 
-            // Drain breadcrumbs and attach to error event
-            List<Breadcrumb> breadcrumbs = breadcrumbBuffer.drain();
-            List<Breadcrumb> eventBreadcrumbs = breadcrumbs.isEmpty() ? null : breadcrumbs;
+            // Breadcrumbs from the merged scope. Falls back to the legacy
+            // RingBuffer for callers still using the pre-Scopes API path.
+            List<Breadcrumb> scopeCrumbs = scope.breadcrumbs();
+            List<Breadcrumb> legacyCrumbs = breadcrumbBuffer.drain();
+            List<Breadcrumb> eventBreadcrumbs;
+            if (!scopeCrumbs.isEmpty() && !legacyCrumbs.isEmpty()) {
+                eventBreadcrumbs = new java.util.ArrayList<>(scopeCrumbs.size() + legacyCrumbs.size());
+                eventBreadcrumbs.addAll(scopeCrumbs);
+                eventBreadcrumbs.addAll(legacyCrumbs);
+            } else if (!scopeCrumbs.isEmpty()) {
+                eventBreadcrumbs = scopeCrumbs;
+            } else if (!legacyCrumbs.isEmpty()) {
+                eventBreadcrumbs = legacyCrumbs;
+            } else {
+                eventBreadcrumbs = null;
+            }
+
+            // User: scope wins over the legacy client-level setUser. The
+            // setUser facade has been routed to the scope so this is a no-op
+            // for callers using the new API; the field stays for back-compat.
+            UserContext user = scope.user() != null ? scope.user() : currentUser;
+            // Privacy-by-default: drop email + ip when sendDefaultPii=false.
+            user = redactUserForPii(user);
 
             // Phase 2 — build structured frames from the JVM stack trace
             // alongside the legacy v1 string list. Each Throwable.StackTraceElement
@@ -229,11 +276,11 @@ public final class AllStakClient {
                     exceptionClass,
                     message,
                     stackTrace,
-                    level != null ? level : "error",
+                    level != null ? level : (scope.level() != null ? scope.level() : "error"),
                     config.getEnvironment(),
                     config.getRelease(),
                     null, // sessionId — not applicable for server SDK
-                    currentUser,
+                    user,
                     mergedMetaErr,
                     traceId,
                     eventReqCtx,
@@ -257,6 +304,16 @@ public final class AllStakClient {
 
             // 4. transport — errors are sent immediately, no buffering.
             transport.send(PATH_ERRORS, masked);
+
+            // 5. release-health: bump the session to errored / crashed.
+            if (sessionTracker != null) {
+                String effectiveLevel = level != null ? level : "error";
+                if ("fatal".equalsIgnoreCase(effectiveLevel)) {
+                    sessionTracker.recordCrash();
+                } else if ("error".equalsIgnoreCase(effectiveLevel)) {
+                    sessionTracker.recordError();
+                }
+            }
         } catch (Exception e) {
             SdkLogger.debug("Failed to capture exception: {}", e.getMessage());
         }
@@ -481,7 +538,7 @@ public final class AllStakClient {
     public void addBreadcrumb(String type, String message, String level, Map<String, Object> data) {
         if (shutdown.get()) return;
         Map<String, Object> safeData = DataMasker.maskMetadata(data);
-        breadcrumbBuffer.add(new Breadcrumb(type, message, level, safeData));
+        Scopes.current().addBreadcrumb(new Breadcrumb(type, message, level, safeData));
     }
 
     public void addBreadcrumb(String type, String message) {
@@ -561,6 +618,12 @@ public final class AllStakClient {
             if (uncaughtHandlerInstalled) {
                 UncaughtExceptionCapture.uninstall();
                 uncaughtHandlerInstalled = false;
+            }
+            // Close the release-health session BEFORE the transport is torn
+            // down so the /sessions/end POST has a chance to land. Status
+            // is decided by what the session accumulated during its life.
+            if (sessionTracker != null) {
+                sessionTracker.end(null);
             }
             logFlusher.shutdown();
             httpFlusher.shutdown();
@@ -660,7 +723,35 @@ public final class AllStakClient {
      * @return true if the span IS sampled (created / traceparent flag {@code -01}).
      */
     public boolean isSpanSampled() {
-        Double rate = config.getTracesSampleRate();
+        return isSpanSampled(null);
+    }
+
+    /**
+     * Context-aware variant. Consult {@code tracesSampler} first (if any)
+     * for a per-transaction probability, then fall back to the static
+     * {@code tracesSampleRate}, then to the parent's sampled bit, then to
+     * "always sampled" (legacy behavior).
+     *
+     * @param context per-transaction inputs; pass {@code null} for the
+     *                no-context fallback (treated as {@code tracesSampleRate}).
+     */
+    public boolean isSpanSampled(dev.allstak.tracing.SamplingContext context) {
+        dev.allstak.tracing.TracesSampler tsSampler = config.getTracesSampler();
+        Double rate = null;
+        if (tsSampler != null && context != null) {
+            try {
+                rate = tsSampler.sample(context);
+            } catch (Throwable t) {
+                SdkLogger.debug("tracesSampler threw — falling back: {}", t.getMessage());
+            }
+        }
+        if (rate == null) rate = config.getTracesSampleRate();
+        // Parent-sampled bit honors only when no explicit decision was set
+        // at this hop. Matches Sentry's "child inherits parent unless local
+        // override exists" semantics.
+        if (rate == null && context != null && context.parentSampled() != null) {
+            return context.parentSampled();
+        }
         if (rate == null) return true;          // legacy always-on
         if (rate >= 1.0) return true;
         if (rate <= 0.0) return false;
@@ -714,5 +805,23 @@ public final class AllStakClient {
             case "debug", "info", "warn", "error", "fatal" -> true;
             default -> false;
         };
+    }
+
+    /**
+     * Privacy-by-default user redaction. When {@code sendDefaultPii=false}
+     * (the SDK default), strip {@code email} and {@code ip} from the
+     * outgoing {@link UserContext} and keep only the stable {@code id}.
+     *
+     * <p>This matches Sentry's stance: an opaque user id is the minimum
+     * needed to compute distinct-users metrics; everything else is treated
+     * as opt-in. A caller-supplied user with no id at all is dropped to
+     * avoid shipping a pure-PII record.
+     */
+    private UserContext redactUserForPii(UserContext user) {
+        if (user == null) return null;
+        if (config.isSendDefaultPii()) return user;
+        if (user.getId() == null || user.getId().isBlank()) return null;
+        if (user.getEmail() == null && user.getIp() == null) return user;
+        return UserContext.ofId(user.getId());
     }
 }

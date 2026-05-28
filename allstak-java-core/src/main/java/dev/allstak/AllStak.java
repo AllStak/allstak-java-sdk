@@ -4,9 +4,12 @@ import dev.allstak.internal.SdkLogger;
 import dev.allstak.model.HttpRequestItem;
 import dev.allstak.model.JobHandle;
 import dev.allstak.model.UserContext;
+import dev.allstak.scope.Scope;
+import dev.allstak.scope.Scopes;
 
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 
 /**
  * Static facade for the AllStak SDK.
@@ -158,25 +161,62 @@ public final class AllStak {
     }
 
     public static void clearBreadcrumbs() {
-        AllStakClient c = CLIENT.get();
-        if (c == null) return;
-        c.clearBreadcrumbs();
+        Scopes.current().clearBreadcrumbs();
     }
 
     // =========================================================================
-    // User Context
+    // User Context — writes to the current scope (Current if pushed,
+    // else Isolation). Use withIsolationScope to isolate per-request.
     // =========================================================================
 
     public static void setUser(UserContext user) {
-        AllStakClient c = CLIENT.get();
-        if (c == null) return;
-        c.setUser(user);
+        Scopes.current().setUser(user);
     }
 
     public static void clearUser() {
-        AllStakClient c = CLIENT.get();
-        if (c == null) return;
-        c.clearUser();
+        Scopes.current().setUser(null);
+    }
+
+    // =========================================================================
+    // Tags / contexts / extras — written to the current scope.
+    // =========================================================================
+
+    public static void setTag(String key, String value) {
+        Scopes.current().setTag(key, value);
+    }
+
+    public static void removeTag(String key) {
+        Scopes.current().removeTag(key);
+    }
+
+    public static void setContext(String key, Object value) {
+        Scopes.current().setContext(key, value);
+    }
+
+    public static void setExtra(String key, Object value) {
+        Scopes.current().setExtra(key, value);
+    }
+
+    // =========================================================================
+    // Scope blocks — Sentry-style three-layer Scopes API.
+    //
+    // withScope: forks Current, runs block, pops (mutations don't escape).
+    // withIsolationScope: pushes a fresh isolation scope for a unit of work
+    //   (HTTP request, background job) and restores the previous one after.
+    // configureScope: runs block against the active scope without forking;
+    //   use to accumulate tags/breadcrumbs on the existing isolation scope.
+    // =========================================================================
+
+    public static void withScope(Consumer<Scope> block) {
+        Scopes.withScope(block);
+    }
+
+    public static void withIsolationScope(Consumer<Scope> block) {
+        Scopes.withIsolationScope(block);
+    }
+
+    public static void configureScope(Consumer<Scope> block) {
+        Scopes.configureScope(block);
     }
 
     // =========================================================================
@@ -210,11 +250,12 @@ public final class AllStak {
         return CLIENT.get() != null;
     }
 
-    // For testing — allows resetting the singleton
+    // For testing — allows resetting the singleton + scope stack.
     static void reset() {
         AllStakClient c = CLIENT.getAndSet(null);
         if (c != null) {
             c.shutdown();
         }
+        Scopes.clear();
     }
 }

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>sa.allstak</groupId>
+        <artifactId>allstak-java-parent</artifactId>
+        <version>0.1.5</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>allstak-bom</artifactId>
+    <packaging>pom</packaging>
+    <name>AllStak Java SDK - BOM</name>
+    <description>
+        Bill-of-materials for the AllStak Java SDK family. Import this in a
+        downstream &lt;dependencyManagement&gt; block so a single version line
+        pins every AllStak module the project depends on, eliminating
+        version skew between allstak-java-core and allstak-spring-boot-starter.
+    </description>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>sa.allstak</groupId>
+                <artifactId>allstak-java-core</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>sa.allstak</groupId>
+                <artifactId>allstak-spring-boot-starter</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+</project>

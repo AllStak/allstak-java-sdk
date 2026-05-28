@@ -44,6 +44,7 @@
     </issueManagement>
 
     <modules>
+        <module>allstak-bom</module>
         <module>allstak-java-core</module>
         <module>allstak-spring-boot-starter</module>
         <module>allstak-sample-app</module>
