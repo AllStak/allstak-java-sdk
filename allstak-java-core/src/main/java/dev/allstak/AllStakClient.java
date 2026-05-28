@@ -29,6 +29,8 @@ public final class AllStakClient {
     private static final String PATH_DB_QUERIES = "/ingest/v1/db";
     private static final String PATH_SPANS = "/ingest/v1/spans";
     private static final String PATH_RELEASES = "/ingest/v1/releases";
+    private static final String PATH_FEEDBACK = "/ingest/v1/feedback";
+    private static final String PATH_ATTACHMENTS = "/ingest/v1/attachments";
 
     private static final int HTTP_BATCH_MAX = 100;
     private static final int DB_BATCH_MAX = 100;
@@ -817,6 +819,37 @@ public final class AllStakClient {
      * as opt-in. A caller-supplied user with no id at all is dropped to
      * avoid shipping a pure-PII record.
      */
+    /**
+     * Post an end-user feedback record. The {@code eventId} ties the
+     * feedback to an error previously captured via {@link #captureException}.
+     */
+    public void captureFeedback(dev.allstak.feedback.UserFeedback feedback) {
+        if (shutdown.get() || transport.isDisabled() || feedback == null) return;
+        try {
+            transport.send(PATH_FEEDBACK, feedback);
+        } catch (Exception e) {
+            SdkLogger.debug("Failed to capture feedback: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * Upload a binary attachment. Body is delivered as base64-wrapped JSON
+     * so the standard transport pipeline (retry / rate-limit) applies.
+     */
+    public void captureAttachment(dev.allstak.feedback.Attachment attachment) {
+        if (shutdown.get() || transport.isDisabled() || attachment == null) return;
+        try {
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("filename", attachment.getFilename());
+            payload.put("contentType", attachment.getContentType());
+            payload.put("bytesBase64",
+                    attachment.getBytes() == null ? "" : java.util.Base64.getEncoder().encodeToString(attachment.getBytes()));
+            transport.send(PATH_ATTACHMENTS, payload);
+        } catch (Exception e) {
+            SdkLogger.debug("Failed to capture attachment: {}", e.getMessage());
+        }
+    }
+
     private UserContext redactUserForPii(UserContext user) {
         if (user == null) return null;
         if (config.isSendDefaultPii()) return user;

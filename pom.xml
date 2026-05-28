@@ -47,6 +47,26 @@
         <module>allstak-bom</module>
         <module>allstak-java-core</module>
         <module>allstak-spring-boot-starter</module>
+        <module>allstak-okhttp</module>
+        <module>allstak-apache-http-client-5</module>
+        <module>allstak-openfeign</module>
+        <module>allstak-reactor</module>
+        <module>allstak-quartz</module>
+        <module>allstak-kafka</module>
+        <module>allstak-spring-security</module>
+        <module>allstak-lettuce</module>
+        <module>allstak-jedis</module>
+        <module>allstak-mongodb</module>
+        <module>allstak-r2dbc</module>
+        <module>allstak-graphql</module>
+        <module>allstak-spring-cache</module>
+        <module>allstak-profiling-jfr</module>
+        <module>allstak-opentelemetry</module>
+        <module>allstak-kotlin-coroutines</module>
+        <module>allstak-jms</module>
+        <module>allstak-rabbitmq</module>
+        <module>allstak-grpc</module>
+        <module>allstak-maven-plugin</module>
         <module>allstak-sample-app</module>
     </modules>
 

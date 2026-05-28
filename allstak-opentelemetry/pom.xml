@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+    <modelVersion>4.0.0</modelVersion>
+    <parent><groupId>sa.allstak</groupId><artifactId>allstak-java-parent</artifactId><version>0.1.5</version><relativePath>../pom.xml</relativePath></parent>
+    <artifactId>allstak-opentelemetry</artifactId>
+    <name>AllStak Java SDK - OpenTelemetry Bridge</name>
+    <description>OpenTelemetry SpanProcessor that forwards finished spans into AllStak's pipeline.</description>
+    <dependencies>
+        <dependency><groupId>sa.allstak</groupId><artifactId>allstak-java-core</artifactId><version>${project.version}</version></dependency>
+        <dependency><groupId>io.opentelemetry</groupId><artifactId>opentelemetry-sdk</artifactId><version>1.36.0</version><scope>provided</scope></dependency>
+        <dependency><groupId>org.junit.jupiter</groupId><artifactId>junit-jupiter</artifactId><version>${junit.version}</version><scope>test</scope></dependency>
+        <dependency><groupId>org.assertj</groupId><artifactId>assertj-core</artifactId><version>3.25.3</version><scope>test</scope></dependency>
+    </dependencies>
+</project>

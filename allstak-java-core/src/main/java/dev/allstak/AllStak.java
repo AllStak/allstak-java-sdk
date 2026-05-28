@@ -223,6 +223,22 @@ public final class AllStak {
     // Flush & Shutdown
     // =========================================================================
 
+    // =========================================================================
+    // User feedback + attachments
+    // =========================================================================
+
+    public static void captureFeedback(dev.allstak.feedback.UserFeedback feedback) {
+        AllStakClient c = CLIENT.get();
+        if (c == null) return;
+        c.captureFeedback(feedback);
+    }
+
+    public static void captureAttachment(dev.allstak.feedback.Attachment attachment) {
+        AllStakClient c = CLIENT.get();
+        if (c == null) return;
+        c.captureAttachment(attachment);
+    }
+
     public static void flush() {
         AllStakClient c = CLIENT.get();
         if (c == null) return;
@@ -250,8 +266,14 @@ public final class AllStak {
         return CLIENT.get() != null;
     }
 
-    // For testing — allows resetting the singleton + scope stack.
-    static void reset() {
+    /**
+     * Reset the SDK to a clean state — primarily for tests. Shuts down the
+     * active client (if any) and clears every scope layer. Production
+     * code should call {@link #shutdown()} instead; this method is public
+     * so test classes outside the {@code dev.allstak} package (e.g. each
+     * instrumentation module's own test suite) can reach it.
+     */
+    public static void reset() {
         AllStakClient c = CLIENT.getAndSet(null);
         if (c != null) {
             c.shutdown();

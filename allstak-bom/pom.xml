@@ -33,6 +33,25 @@
                 <artifactId>allstak-spring-boot-starter</artifactId>
                 <version>${project.version}</version>
             </dependency>
+            <dependency><groupId>sa.allstak</groupId><artifactId>allstak-okhttp</artifactId><version>${project.version}</version></dependency>
+            <dependency><groupId>sa.allstak</groupId><artifactId>allstak-apache-http-client-5</artifactId><version>${project.version}</version></dependency>
+            <dependency><groupId>sa.allstak</groupId><artifactId>allstak-openfeign</artifactId><version>${project.version}</version></dependency>
+            <dependency><groupId>sa.allstak</groupId><artifactId>allstak-reactor</artifactId><version>${project.version}</version></dependency>
+            <dependency><groupId>sa.allstak</groupId><artifactId>allstak-quartz</artifactId><version>${project.version}</version></dependency>
+            <dependency><groupId>sa.allstak</groupId><artifactId>allstak-kafka</artifactId><version>${project.version}</version></dependency>
+            <dependency><groupId>sa.allstak</groupId><artifactId>allstak-spring-security</artifactId><version>${project.version}</version></dependency>
+            <dependency><groupId>sa.allstak</groupId><artifactId>allstak-lettuce</artifactId><version>${project.version}</version></dependency>
+            <dependency><groupId>sa.allstak</groupId><artifactId>allstak-jedis</artifactId><version>${project.version}</version></dependency>
+            <dependency><groupId>sa.allstak</groupId><artifactId>allstak-mongodb</artifactId><version>${project.version}</version></dependency>
+            <dependency><groupId>sa.allstak</groupId><artifactId>allstak-r2dbc</artifactId><version>${project.version}</version></dependency>
+            <dependency><groupId>sa.allstak</groupId><artifactId>allstak-graphql</artifactId><version>${project.version}</version></dependency>
+            <dependency><groupId>sa.allstak</groupId><artifactId>allstak-spring-cache</artifactId><version>${project.version}</version></dependency>
+            <dependency><groupId>sa.allstak</groupId><artifactId>allstak-profiling-jfr</artifactId><version>${project.version}</version></dependency>
+            <dependency><groupId>sa.allstak</groupId><artifactId>allstak-opentelemetry</artifactId><version>${project.version}</version></dependency>
+            <dependency><groupId>sa.allstak</groupId><artifactId>allstak-kotlin-coroutines</artifactId><version>${project.version}</version></dependency>
+            <dependency><groupId>sa.allstak</groupId><artifactId>allstak-jms</artifactId><version>${project.version}</version></dependency>
+            <dependency><groupId>sa.allstak</groupId><artifactId>allstak-rabbitmq</artifactId><version>${project.version}</version></dependency>
+            <dependency><groupId>sa.allstak</groupId><artifactId>allstak-grpc</artifactId><version>${project.version}</version></dependency>
         </dependencies>
     </dependencyManagement>
 

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+    <modelVersion>4.0.0</modelVersion>
+    <parent><groupId>sa.allstak</groupId><artifactId>allstak-java-parent</artifactId><version>0.1.5</version><relativePath>../pom.xml</relativePath></parent>
+    <artifactId>allstak-maven-plugin</artifactId>
+    <packaging>maven-plugin</packaging>
+    <name>AllStak Java SDK - Maven Plugin</name>
+    <description>
+        Maven goals for AllStak source-context support: generate a debug id,
+        bundle the project's Java sources, and upload the bundle to AllStak.
+    </description>
+    <prerequisites><maven>3.6.0</maven></prerequisites>
+    <properties>
+        <maven.api.version>3.9.6</maven.api.version>
+    </properties>
+    <dependencies>
+        <dependency><groupId>org.apache.maven</groupId><artifactId>maven-plugin-api</artifactId><version>${maven.api.version}</version><scope>provided</scope></dependency>
+        <dependency><groupId>org.apache.maven</groupId><artifactId>maven-core</artifactId><version>${maven.api.version}</version><scope>provided</scope></dependency>
+        <dependency><groupId>org.apache.maven.plugin-tools</groupId><artifactId>maven-plugin-annotations</artifactId><version>3.11.0</version><scope>provided</scope></dependency>
+        <dependency><groupId>org.junit.jupiter</groupId><artifactId>junit-jupiter</artifactId><version>${junit.version}</version><scope>test</scope></dependency>
+        <dependency><groupId>org.assertj</groupId><artifactId>assertj-core</artifactId><version>3.25.3</version><scope>test</scope></dependency>
+    </dependencies>
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-plugin-plugin</artifactId>
+                <version>3.11.0</version>
+            </plugin>
+        </plugins>
+    </build>
+</project>
