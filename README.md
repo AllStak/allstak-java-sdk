@@ -79,6 +79,12 @@ The SDK redacts common sensitive headers and fields. Avoid putting secrets in cu
 - Missing Spring telemetry: confirm the starter dependency is on the runtime classpath.
 - Missing outbound traces: use Spring-managed `RestTemplate` or `WebClient` beans.
 
+## Contributing and Support
+
+- Report bugs with the GitHub bug report template: https://github.com/AllStak/allstak-java-sdk/issues/new/choose
+- Open pull requests using the checklist in [CONTRIBUTING.md](CONTRIBUTING.md).
+- Report security vulnerabilities privately through [SECURITY.md](SECURITY.md).
+
 ## License
 
 MIT
