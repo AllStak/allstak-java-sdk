@@ -55,9 +55,20 @@ public final class HttpTransport {
      * Returns true if the send succeeded (202), false otherwise.
      */
     public boolean send(String path, Object payload) {
+        return sendWithResult(path, payload).isAccepted();
+    }
+
+    /**
+     * Like {@link #send(String, Object)} but returns the richer
+     * {@link SendResult} so the offline spool can tell a transient failure
+     * (persist / keep for later) from a permanent one (drop). Serializes the
+     * given payload first; the resulting JSON is what gets sent and is what the
+     * spool stores for replay.
+     */
+    public SendResult sendWithResult(String path, Object payload) {
         if (disabled) {
             SdkLogger.debug("SDK is disabled (401 received) — dropping event for {}", path);
-            return false;
+            return SendResult.PERMANENT;
         }
 
         String wireJson;
@@ -65,9 +76,28 @@ public final class HttpTransport {
             wireJson = objectMapper.writeValueAsString(payload);
         } catch (Exception e) {
             SdkLogger.debug("Failed to serialize payload for {}: {}", path, e.getMessage());
-            return false;
+            return SendResult.PERMANENT;
         }
 
+        return sendJson(path, wireJson);
+    }
+
+    /**
+     * Replay a pre-serialized (already PII-scrubbed) JSON body — used by the
+     * offline spool drainer so a persisted envelope is sent byte-for-byte as it
+     * was scrubbed, with no further mutation. Honors the same retry / backoff /
+     * disable behavior as {@link #send}.
+     */
+    public SendResult sendRawJson(String path, String wireJson) {
+        if (disabled) {
+            SdkLogger.debug("SDK is disabled (401 received) — dropping spooled event for {}", path);
+            return SendResult.PERMANENT;
+        }
+        if (wireJson == null) return SendResult.PERMANENT;
+        return sendJson(path, wireJson);
+    }
+
+    private SendResult sendJson(String path, String wireJson) {
         SdkLogger.debug("Sending to {}{}: event_bytes={}", baseUrl, path, wireJson.length());
 
         // Delay to apply before the NEXT attempt. When a server sends a valid
@@ -86,7 +116,9 @@ public final class HttpTransport {
                     Thread.sleep(delay);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
-                    return false;
+                    // Interrupted mid-backoff — treat as a transient miss so the
+                    // event survives on the spool rather than being dropped.
+                    return SendResult.TRANSIENT;
                 }
             }
 
@@ -106,18 +138,18 @@ public final class HttpTransport {
                         baseUrl, path, status, response.body() == null ? 0 : response.body().length());
 
                 if (status == 202) {
-                    return true;
+                    return SendResult.ACCEPTED;
                 }
 
                 if (RetryPolicy.isAuthError(status)) {
                     SdkLogger.warn("Invalid API key — disabling SDK");
                     disabled = true;
-                    return false;
+                    return SendResult.PERMANENT;
                 }
 
                 if (RetryPolicy.isClientError(status)) {
                     SdkLogger.debug("Client error {} for {} — dropping event", status, path);
-                    return false;
+                    return SendResult.PERMANENT;
                 }
 
                 if (RetryPolicy.isRetryable(status)) {
@@ -137,24 +169,27 @@ public final class HttpTransport {
                     continue;
                 }
 
-                // Unknown status — don't retry
+                // Unknown status — don't retry. Treat as permanent so it is not
+                // re-spooled forever, matching the legacy "drop" behavior.
                 SdkLogger.debug("Unexpected status {} for {} — dropping event", status, path);
-                return false;
+                return SendResult.PERMANENT;
 
             } catch (IOException e) {
                 SdkLogger.debug("Network error for {} — attempt {}/{}: {}", path, attempt + 1, RetryPolicy.maxAttempts(), e.getMessage());
                 // Retry on network errors
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
-                return false;
+                return SendResult.TRANSIENT;
             } catch (Exception e) {
                 SdkLogger.debug("Unexpected error for {}: {}", path, e.getMessage());
-                return false;
+                return SendResult.PERMANENT;
             }
         }
 
-        SdkLogger.debug("All {} retry attempts exhausted for {} — discarding event", RetryPolicy.maxAttempts(), path);
-        return false;
+        // Out of attempts. The last failures were network/5xx (transient) — the
+        // event is a candidate for the offline spool rather than a hard drop.
+        SdkLogger.debug("All {} retry attempts exhausted for {} — event is retryable (transient)", RetryPolicy.maxAttempts(), path);
+        return SendResult.TRANSIENT;
     }
 
     public ObjectMapper getObjectMapper() {

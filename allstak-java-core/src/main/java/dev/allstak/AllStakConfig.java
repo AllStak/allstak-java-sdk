@@ -51,6 +51,12 @@ public final class AllStakConfig {
     // Per-transaction sampling + outbound trace-header allowlist.
     private final dev.allstak.tracing.TracesSampler tracesSampler;
     private final dev.allstak.tracing.TracePropagationDecider tracePropagationDecider;
+    // Offline / persistent event queue (survive restart + outage).
+    private final boolean enableOfflineQueue;
+    private final String offlineQueueDir;
+    private final int offlineQueueMaxEntries;
+    private final long offlineQueueMaxBytes;
+    private final long offlineQueueMaxAgeMs;
 
     private AllStakConfig(Builder builder) {
         this.apiKey = builder.apiKey;
@@ -82,6 +88,11 @@ public final class AllStakConfig {
         this.sendDefaultPii = builder.sendDefaultPii;
         this.tracesSampler = builder.tracesSampler;
         this.tracePropagationDecider = new dev.allstak.tracing.TracePropagationDecider(builder.tracePropagationTargets);
+        this.enableOfflineQueue = builder.enableOfflineQueue;
+        this.offlineQueueDir = builder.offlineQueueDir;
+        this.offlineQueueMaxEntries = builder.offlineQueueMaxEntries;
+        this.offlineQueueMaxBytes = builder.offlineQueueMaxBytes;
+        this.offlineQueueMaxAgeMs = builder.offlineQueueMaxAgeMs;
     }
 
     private static String resolveRelease(Builder builder) {
@@ -187,6 +198,29 @@ public final class AllStakConfig {
     public dev.allstak.tracing.TracePropagationDecider getTracePropagationDecider() { return tracePropagationDecider; }
 
     /**
+     * Whether to persist un-sent telemetry to a filesystem spool so buffered
+     * events survive a process restart or a network outage, replaying on the
+     * next {@code init}. <b>Default {@code true}.</b> Session lifecycle calls
+     * ({@code /sessions/start|end}) are never persisted. Degrades silently to
+     * the existing in-memory behavior when the spool directory is not writable
+     * (read-only FS, serverless, sandbox). Disable to keep telemetry purely
+     * in-memory.
+     */
+    public boolean isEnableOfflineQueue() { return enableOfflineQueue; }
+    /**
+     * Directory for the offline spool. {@code null} (default) uses
+     * {@code ${java.io.tmpdir}/allstak-spool/<apiKeyHash>}. Set to isolate or
+     * relocate the store (e.g. a durable volume).
+     */
+    public String getOfflineQueueDir() { return offlineQueueDir; }
+    /** Max persisted envelopes before the oldest are evicted. Default 200. */
+    public int getOfflineQueueMaxEntries() { return offlineQueueMaxEntries; }
+    /** Max total spool bytes before the oldest are evicted. Default ~5 MB. */
+    public long getOfflineQueueMaxBytes() { return offlineQueueMaxBytes; }
+    /** Max age before a persisted envelope is pruned as stale. Default 48h. */
+    public long getOfflineQueueMaxAgeMs() { return offlineQueueMaxAgeMs; }
+
+    /**
      * Release-tracking tags merged into every event payload's metadata so
      * the dashboard can group / filter by SDK / platform / commit / branch.
      * Backend reads these into dedicated columns in a future migration; for
@@ -252,6 +286,11 @@ public final class AllStakConfig {
         private boolean sendDefaultPii = false;
         private dev.allstak.tracing.TracesSampler tracesSampler;
         private java.util.List<String> tracePropagationTargets;
+        private boolean enableOfflineQueue = true;
+        private String offlineQueueDir;
+        private int offlineQueueMaxEntries = dev.allstak.spool.EventSpool.DEFAULT_MAX_ENTRIES;
+        private long offlineQueueMaxBytes = dev.allstak.spool.EventSpool.DEFAULT_MAX_BYTES;
+        private long offlineQueueMaxAgeMs = dev.allstak.spool.EventSpool.DEFAULT_MAX_AGE_MS;
 
         private Builder() {}
 
@@ -321,6 +360,26 @@ public final class AllStakConfig {
         public Builder tracePropagationTargets(java.util.List<String> targets) {
             this.tracePropagationTargets = targets; return this;
         }
+        /**
+         * Toggle the offline / persistent event queue. Default {@code true}.
+         * When on, telemetry that cannot be delivered (network down, retries
+         * exhausted, or events still buffered at shutdown) is written — already
+         * PII-scrubbed — to a filesystem spool and replayed on the next
+         * {@code init}. Session lifecycle calls are excluded. Set {@code false}
+         * to keep telemetry purely in-memory.
+         */
+        public Builder enableOfflineQueue(boolean enable) { this.enableOfflineQueue = enable; return this; }
+        /**
+         * Directory for the offline spool. {@code null} (default) uses
+         * {@code ${java.io.tmpdir}/allstak-spool/<apiKeyHash>}.
+         */
+        public Builder offlineQueueDir(String dir) { this.offlineQueueDir = dir; return this; }
+        /** Cap the spool by entry count (drop-oldest when exceeded). Default 200. */
+        public Builder offlineQueueMaxEntries(int maxEntries) { this.offlineQueueMaxEntries = maxEntries; return this; }
+        /** Cap the spool by total bytes (drop-oldest when exceeded). Default ~5 MB. */
+        public Builder offlineQueueMaxBytes(long maxBytes) { this.offlineQueueMaxBytes = maxBytes; return this; }
+        /** Max age before a persisted envelope is pruned as stale. Default 48h. */
+        public Builder offlineQueueMaxAgeMs(long maxAgeMs) { this.offlineQueueMaxAgeMs = maxAgeMs; return this; }
 
         public AllStakConfig build() {
             AllStakConfig config = new AllStakConfig(this);

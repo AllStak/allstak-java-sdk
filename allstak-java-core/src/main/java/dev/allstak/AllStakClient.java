@@ -10,7 +10,9 @@ import dev.allstak.scope.MergedScope;
 import dev.allstak.scope.Scopes;
 import dev.allstak.session.SessionStatus;
 import dev.allstak.session.SessionTracker;
+import dev.allstak.spool.EventSpool;
 import dev.allstak.transport.HttpTransport;
+import dev.allstak.transport.SendResult;
 
 import java.time.Instant;
 import java.util.*;
@@ -53,6 +55,15 @@ public final class AllStakClient {
 
     private final AllStakConfig config;
     private final HttpTransport transport;
+
+    /**
+     * Offline / persistent event queue. Non-null and {@link EventSpool#isAvailable()
+     * available} only when {@link AllStakConfig#isEnableOfflineQueue()} is true
+     * and the spool directory is writable. Persists already-scrubbed
+     * error/log/span/http/db envelopes that could not be delivered; never
+     * session lifecycle calls. Degrades silently to in-memory when unavailable.
+     */
+    private final EventSpool spool;
 
     // Buffers
     private final RingBuffer<LogEvent> logBuffer;
@@ -104,10 +115,16 @@ public final class AllStakClient {
         this.breadcrumbBuffer = new RingBuffer<>(BREADCRUMB_BUFFER_SIZE);
         this.dbQueryBuffer = new RingBuffer<>(config.getBufferSize());
 
-        // Log flush worker — sends one log per request
+        // Offline spool — persists un-sent error/log/span/http/db envelopes so
+        // they survive restarts and outages. Construction never throws and a
+        // non-writable dir leaves it !available (silent in-memory fallback).
+        this.spool = buildSpool(config, transport);
+
+        // Log flush worker — sends one log per request; un-deliverable logs are
+        // spooled for the next drain.
         this.logFlusher = new FlushWorker<>("logs", logBuffer, logs -> {
             for (LogEvent log : logs) {
-                transport.send(PATH_LOGS, log);
+                sendOrSpool(PATH_LOGS, log);
             }
             return true;
         });
@@ -116,7 +133,7 @@ public final class AllStakClient {
         this.httpFlusher = new FlushWorker<>("http-requests", httpBuffer, items -> {
             for (int i = 0; i < items.size(); i += HTTP_BATCH_MAX) {
                 List<HttpRequestItem> batch = items.subList(i, Math.min(i + HTTP_BATCH_MAX, items.size()));
-                transport.send(PATH_HTTP_REQUESTS, new HttpRequestBatch(batch));
+                sendOrSpool(PATH_HTTP_REQUESTS, new HttpRequestBatch(batch));
             }
             return true;
         });
@@ -125,7 +142,7 @@ public final class AllStakClient {
         this.dbQueryFlusher = new FlushWorker<>("db-queries", dbQueryBuffer, items -> {
             for (int i = 0; i < items.size(); i += DB_BATCH_MAX) {
                 List<DatabaseQueryItem> batch = items.subList(i, Math.min(i + DB_BATCH_MAX, items.size()));
-                transport.send(PATH_DB_QUERIES, new DatabaseQueryBatch(batch));
+                sendOrSpool(PATH_DB_QUERIES, new DatabaseQueryBatch(batch));
             }
             return true;
         });
@@ -155,6 +172,102 @@ public final class AllStakClient {
 
         SdkLogger.debug("AllStak SDK initialized — host={}, env={}, release={}",
                 config.getHost(), config.getEnvironment(), config.getRelease());
+
+        // Drain any envelopes persisted by a previous run / before the last
+        // outage. Runs on a daemon thread so init never blocks on the network.
+        drainSpoolAsync();
+    }
+
+    /**
+     * Build the offline spool from config, fail-open. Returns {@code null} when
+     * the feature is disabled; an {@link EventSpool} otherwise (which itself
+     * reports {@link EventSpool#isAvailable()} = false when the dir is not
+     * writable, so all spool ops become no-ops). Never throws.
+     */
+    private static EventSpool buildSpool(AllStakConfig config, HttpTransport transport) {
+        if (!config.isEnableOfflineQueue()) return null;
+        // Under a unit-test classpath, only build a spool when the caller gave
+        // an explicit directory (mirrors the session/release-registration test
+        // guards). This keeps the shared default temp dir out of the existing
+        // request-count assertions while letting the spool's own tests opt in
+        // by configuring offlineQueueDir to a @TempDir.
+        if (isLikelyTestRuntime() && (config.getOfflineQueueDir() == null || config.getOfflineQueueDir().isBlank())) {
+            return null;
+        }
+        try {
+            java.nio.file.Path dir = EventSpool.resolveDir(config.getOfflineQueueDir(), config.getApiKey());
+            return new EventSpool(
+                    dir,
+                    config.getOfflineQueueMaxEntries(),
+                    config.getOfflineQueueMaxBytes(),
+                    config.getOfflineQueueMaxAgeMs(),
+                    transport.getObjectMapper());
+        } catch (Throwable t) {
+            SdkLogger.debug("Offline spool init failed — in-memory only: {}", t.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Send a (already PII-scrubbed) payload through the transport and, only on a
+     * transient failure (offline, retries exhausted, 5xx/429), persist it to the
+     * offline spool so it survives a restart or outage. Permanent failures
+     * (4xx, auth-disabled) are dropped as before. The scrub authority is the
+     * existing capture pipeline — the spool stores exactly what would have gone
+     * on the wire. Never throws.
+     *
+     * @return true if the send was accepted (2xx)
+     */
+    private boolean sendOrSpool(String path, Object maskedPayload) {
+        SendResult result = transport.sendWithResult(path, maskedPayload);
+        if (result == SendResult.TRANSIENT && spool != null) {
+            try {
+                // Serialize via the transport's own mapper so the spooled bytes
+                // match the wire form exactly (already scrubbed upstream).
+                com.fasterxml.jackson.databind.JsonNode node =
+                        transport.getObjectMapper().valueToTree(maskedPayload);
+                spool.persist(path, node);
+            } catch (Throwable t) {
+                SdkLogger.debug("Spool persist skipped for {}: {}", path, t.getMessage());
+            }
+        }
+        return result.isAccepted();
+    }
+
+    /**
+     * Asynchronously replay persisted envelopes through the existing transport
+     * (which applies the same retry/backoff/disable behavior). An entry is
+     * removed only once it is accepted (2xx) or permanently undeliverable (4xx
+     * other than 429); transient failures leave it on disk for a later drain so
+     * a continuing outage does not lose data. Fail-open throughout.
+     */
+    private void drainSpoolAsync() {
+        if (spool == null || !spool.isAvailable()) return;
+        Thread t = new Thread(() -> {
+            try {
+                List<EventSpool.Handle> handles = spool.load();
+                if (handles.isEmpty()) return;
+                SdkLogger.debug("Draining {} persisted event(s) from offline spool", handles.size());
+                for (EventSpool.Handle h : handles) {
+                    if (shutdown.get() || transport.isDisabled()) break;
+                    try {
+                        String json = transport.getObjectMapper().writeValueAsString(h.payload());
+                        SendResult r = transport.sendRawJson(h.path(), json);
+                        // Remove only on a terminal outcome; keep TRANSIENT for
+                        // the next drain so a continuing outage is not lost.
+                        if (r == SendResult.ACCEPTED || r == SendResult.PERMANENT) {
+                            spool.remove(h);
+                        }
+                    } catch (Throwable err) {
+                        SdkLogger.debug("Spool replay failed for {}: {}", h.path(), err.getMessage());
+                    }
+                }
+            } catch (Throwable err) {
+                SdkLogger.debug("Spool drain failed: {}", err.getMessage());
+            }
+        }, "allstak-spool-drain");
+        t.setDaemon(true);
+        t.start();
     }
 
     private void registerRuntimeRelease() {
@@ -332,8 +445,10 @@ public final class AllStakClient {
             // 3. masking — scrub PII from metadata after beforeSend ran.
             ErrorEvent masked = withMaskedMetadata(processed);
 
-            // 4. transport — errors are sent immediately, no buffering.
-            transport.send(PATH_ERRORS, masked);
+            // 4. transport — errors are sent immediately, no buffering. If the
+            // send is un-deliverable (offline / retries exhausted) the masked
+            // payload is spooled so it survives a restart or outage.
+            sendOrSpool(PATH_ERRORS, masked);
 
             // 5. release-health: bump the session to errored / crashed.
             if (sessionTracker != null) {
@@ -615,7 +730,7 @@ public final class AllStakClient {
             span.put("data", "");
 
             Map<String, Object> payload = Map.of("spans", List.of(span));
-            transport.send(PATH_SPANS, payload);
+            sendOrSpool(PATH_SPANS, payload);
         } catch (Exception e) {
             SdkLogger.debug("Failed to capture span: {}", e.getMessage());
         }
