@@ -38,7 +38,10 @@ public class AllStakAutoConfiguration {
                 .serviceName(props.getServiceName())
                 .installUncaughtExceptionHandler(props.isInstallUncaughtExceptionHandler())
                 .sampleRate(props.getSampleRate())
-                .tracesSampleRate(props.getTracesSampleRate());
+                .tracesSampleRate(props.getTracesSampleRate())
+                .sendDefaultPii(props.isSendDefaultPii())
+                .enableAutoSessionTracking(props.isEnableAutoSessionTracking())
+                .tracePropagationTargets(props.getTracePropagationTargets());
         // Optional user-supplied beforeSend hook, registered as a bean.
         AllStakBeforeSend hook = beforeSend.getIfAvailable();
         if (hook != null) {
@@ -210,6 +213,137 @@ public class AllStakAutoConfiguration {
                 SdkLogger.debug("Failed to register Log4j2 appender: {}", e.getMessage());
             }
             return "allstak-log4j2-registered";
+        }
+    }
+
+    // =====================================================================
+    // Phase B/C/E auto-configurations — each gated by its library so the
+    // outer class stays loadable on minimal classpaths. Spring eagerly
+    // resolves method return types on the OUTER class only, so every
+    // optional integration lives in its own nested @Configuration.
+    // =====================================================================
+
+    /** Phase B.1 — OkHttp interceptor on every {@code OkHttpClient.Builder}. */
+    @org.springframework.context.annotation.Configuration
+    @ConditionalOnClass(name = "okhttp3.OkHttpClient")
+    @ConditionalOnProperty(prefix = "allstak", name = "capture-ok-http", havingValue = "true", matchIfMissing = true)
+    public static class OkHttpAutoConfiguration {
+        @Bean
+        @ConditionalOnMissingBean
+        public dev.allstak.okhttp.AllStakOkHttpInterceptor allStakOkHttpInterceptor() {
+            return new dev.allstak.okhttp.AllStakOkHttpInterceptor();
+        }
+    }
+
+    /** Phase B.2 — Apache HttpClient 5 request+response interceptor. */
+    @org.springframework.context.annotation.Configuration
+    @ConditionalOnClass(name = "org.apache.hc.core5.http.HttpRequest")
+    @ConditionalOnProperty(prefix = "allstak", name = "capture-apache-http", havingValue = "true", matchIfMissing = true)
+    public static class ApacheHttp5AutoConfiguration {
+        @Bean
+        @ConditionalOnMissingBean
+        public dev.allstak.apache.AllStakApacheHttpInterceptor allStakApacheHttpInterceptor() {
+            return new dev.allstak.apache.AllStakApacheHttpInterceptor();
+        }
+    }
+
+    /** Phase B.3 — Feign RequestInterceptor. */
+    @org.springframework.context.annotation.Configuration
+    @ConditionalOnClass(name = "feign.RequestInterceptor")
+    @ConditionalOnProperty(prefix = "allstak", name = "capture-feign", havingValue = "true", matchIfMissing = true)
+    public static class FeignAutoConfiguration {
+        @Bean
+        @ConditionalOnMissingBean
+        public dev.allstak.feign.AllStakFeignInterceptor allStakFeignInterceptor() {
+            return new dev.allstak.feign.AllStakFeignInterceptor();
+        }
+    }
+
+    /** Phase B.4 — install the Reactor onEachOperator hook at startup. */
+    @org.springframework.context.annotation.Configuration
+    @ConditionalOnClass(name = "reactor.core.publisher.Hooks")
+    @ConditionalOnProperty(prefix = "allstak", name = "capture-reactor", havingValue = "true", matchIfMissing = true)
+    public static class ReactorAutoConfiguration {
+        @Bean
+        public Object allStakReactorHookInstaller() {
+            dev.allstak.reactor.AllStakReactorHooks.register();
+            SdkLogger.debug("AllStak Reactor scope-propagation hook installed");
+            return "allstak-reactor-hook";
+        }
+    }
+
+    /** Phase B.5 — register the AllStak {@code JobListener} on every Quartz Scheduler bean. */
+    @org.springframework.context.annotation.Configuration
+    @ConditionalOnClass(name = "org.quartz.Scheduler")
+    @ConditionalOnProperty(prefix = "allstak", name = "capture-quartz", havingValue = "true", matchIfMissing = true)
+    public static class QuartzAutoConfiguration {
+        @Bean
+        public dev.allstak.quartz.AllStakQuartzJobListener allStakQuartzJobListener() {
+            return new dev.allstak.quartz.AllStakQuartzJobListener();
+        }
+        @Bean
+        public org.springframework.beans.factory.config.BeanPostProcessor allStakQuartzListenerInstaller(
+                dev.allstak.quartz.AllStakQuartzJobListener listener) {
+            return new org.springframework.beans.factory.config.BeanPostProcessor() {
+                @Override public Object postProcessAfterInitialization(Object bean, String beanName) {
+                    if (bean instanceof org.quartz.Scheduler scheduler) {
+                        try { scheduler.getListenerManager().addJobListener(listener); }
+                        catch (Exception e) { SdkLogger.debug("Quartz listener install failed: {}", e.getMessage()); }
+                    }
+                    return bean;
+                }
+            };
+        }
+    }
+
+    /** Phase B.7 — push the Spring Security principal into the active scope on every request. */
+    @org.springframework.context.annotation.Configuration
+    @ConditionalOnClass(name = "org.springframework.security.core.context.SecurityContextHolder")
+    @ConditionalOnProperty(prefix = "allstak", name = "capture-security-user", havingValue = "true", matchIfMissing = true)
+    public static class SpringSecurityAutoConfiguration {
+        /** Marker bean. The {@link AllStakServletFilter} already runs per request;
+         *  enrich it here so the user lands in the scope before any error is captured. */
+        @Bean
+        public org.springframework.web.servlet.HandlerInterceptor allStakSecurityUserHandlerInterceptor() {
+            return new org.springframework.web.servlet.HandlerInterceptor() {
+                @Override
+                public boolean preHandle(jakarta.servlet.http.HttpServletRequest request,
+                                          jakarta.servlet.http.HttpServletResponse response,
+                                          Object handler) {
+                    dev.allstak.spring_security.AllStakSecurityUserEnricher.apply();
+                    return true;
+                }
+            };
+        }
+    }
+
+    /** Phase C.5 — wrap every {@code @Bean Cache} with the AllStak decorator. */
+    @org.springframework.context.annotation.Configuration
+    @ConditionalOnClass(name = "org.springframework.cache.Cache")
+    @ConditionalOnProperty(prefix = "allstak", name = "capture-spring-cache", havingValue = "true", matchIfMissing = true)
+    public static class SpringCacheAutoConfiguration {
+        @Bean
+        public org.springframework.beans.factory.config.BeanPostProcessor allStakCacheDecorator() {
+            return new org.springframework.beans.factory.config.BeanPostProcessor() {
+                @Override public Object postProcessAfterInitialization(Object bean, String beanName) {
+                    if (bean instanceof org.springframework.cache.Cache cache
+                            && !(cache instanceof dev.allstak.spring_cache.AllStakCacheSpanDecorator)) {
+                        return dev.allstak.spring_cache.AllStakCacheSpanDecorator.wrap(cache);
+                    }
+                    return bean;
+                }
+            };
+        }
+    }
+
+    /** Phase E.2 — start a JFR profiler at app boot, stop on shutdown. */
+    @org.springframework.context.annotation.Configuration
+    @ConditionalOnClass(name = "dev.allstak.profiling_jfr.AllStakJfrProfiler")
+    @ConditionalOnProperty(prefix = "allstak", name = "enable-profiling", havingValue = "true")
+    public static class JfrProfilerAutoConfiguration {
+        @Bean(destroyMethod = "stop")
+        public dev.allstak.profiling_jfr.AllStakJfrProfiler allStakJfrProfiler() {
+            return dev.allstak.profiling_jfr.AllStakJfrProfiler.start();
         }
     }
 

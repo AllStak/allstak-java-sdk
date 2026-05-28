@@ -72,6 +72,15 @@ class SampleAppIntegrationTest {
         registry.add("allstak.flush-interval-ms", () -> "500");
         registry.add("allstak.buffer-size", () -> "100");
         registry.add("allstak.service-name", () -> "sample-integration-test");
+        // This integration test pre-dates Phase A.3 (sendDefaultPii=false default)
+        // and asserts that the servlet filter captures + redacts request bodies.
+        // Opt in explicitly so the assertions stand. Real apps should leave this
+        // false; the dedicated PII coverage lives in PiiDefaultsTest.
+        registry.add("allstak.send-default-pii", () -> "true");
+        // The new auto-session-tracking default would open a release-health
+        // session against WireMock during test startup; turn it off to keep
+        // request counts deterministic.
+        registry.add("allstak.enable-auto-session-tracking", () -> "false");
     }
 
     /**

@@ -115,16 +115,24 @@ public class AllStakServletFilter extends OncePerRequestFilter {
                     if (!resHeaders.isEmpty()) resHeadersJson = mapper.writeValueAsString(resHeaders);
                 } catch (Exception ignored) {}
 
-                BodyCapture requestBody = captureBody(
-                        requestWrapper.getContentAsByteArray(),
-                        requestWrapper.getContentType(),
-                        requestWrapper.getCharacterEncoding(),
-                        "request");
-                BodyCapture responseBody = captureBody(
-                        responseWrapper.getContentAsByteArray(),
-                        responseWrapper.getContentType(),
-                        responseWrapper.getCharacterEncoding(),
-                        "response");
+                // PII gate: when sendDefaultPii=false (the SDK default), bodies
+                // contain too much PII to ship by default — even after the
+                // DataMasker pass — so we suppress them entirely and only
+                // capture the request shape (method, path, status, headers
+                // minus auth/cookie). Opt in with allstak.send-default-pii=true.
+                boolean capturesBody = client.getConfig().isSendDefaultPii();
+                BodyCapture requestBody = capturesBody
+                        ? captureBody(requestWrapper.getContentAsByteArray(),
+                                requestWrapper.getContentType(),
+                                requestWrapper.getCharacterEncoding(),
+                                "request")
+                        : new BodyCapture(null, "disabled", "sendDefaultPii=false");
+                BodyCapture responseBody = capturesBody
+                        ? captureBody(responseWrapper.getContentAsByteArray(),
+                                responseWrapper.getContentType(),
+                                responseWrapper.getCharacterEncoding(),
+                                "response")
+                        : new BodyCapture(null, "disabled", "sendDefaultPii=false");
 
                 HttpRequestItem item = HttpRequestItem.builder()
                         .traceId(traceId)

@@ -1,4 +1,7 @@
-dev/allstak/spring/AutoInstrumentationIntegrationTest$WireMockTransportConfig.class
-dev/allstak/spring/AutoInstrumentationIntegrationTest$AutoInstrumentedApp.class
-dev/allstak/spring/AutoInstrumentationIntegrationTest.class
 dev/allstak/spring/AutoInstrumentationIntegrationTest$ScheduledHitCounter.class
+dev/allstak/spring/AllStakLog4j2AppenderTest.class
+dev/allstak/spring/AutoInstrumentationIntegrationTest$WireMockTransportConfig.class
+dev/allstak/spring/AllStakAutoConfigurationFeatureTest$BeforeSendConfig.class
+dev/allstak/spring/AutoInstrumentationIntegrationTest$AutoInstrumentedApp.class
+dev/allstak/spring/AllStakAutoConfigurationFeatureTest.class
+dev/allstak/spring/AutoInstrumentationIntegrationTest.class

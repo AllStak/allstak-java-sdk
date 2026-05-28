@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/surefire-test-report-3.0.xsd" version="3.0" name="dev.allstak.AllStakClientIntegrationTest" time="1.27" tests="16" errors="0" skipped="0" failures="0">
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/surefire-test-report-3.0.xsd" version="3.0" name="dev.allstak.AllStakClientIntegrationTest" time="1.339" tests="16" errors="0" skipped="0" failures="0">
   <properties>
     <property name="java.specification.version" value="21"/>
     <property name="sun.jnu.encoding" value="UTF-8"/>
@@ -13,7 +13,7 @@
     <property name="sun.java.launcher" value="SUN_STANDARD"/>
     <property name="user.country" value="SA"/>
     <property name="sun.boot.library.path" value="/Users/irovler/Library/Java/JavaVirtualMachines/corretto-21.0.8/Contents/Home/lib"/>
-    <property name="sun.java.command" value="/Volumes/M.2/MyProjects/AllStak-Projects/sdks/allstak-java-sdk/allstak-java-core/target/surefire/surefirebooter-20260528191730538_3.jar /Volumes/M.2/MyProjects/AllStak-Projects/sdks/allstak-java-sdk/allstak-java-core/target/surefire 2026-05-28T19-17-30_496-jvmRun1 surefire-20260528191730538_1tmp surefire_0-20260528191730538_2tmp"/>
+    <property name="sun.java.command" value="/Volumes/M.2/MyProjects/AllStak-Projects/sdks/allstak-java-sdk/allstak-java-core/target/surefire/surefirebooter-20260528194201785_3.jar /Volumes/M.2/MyProjects/AllStak-Projects/sdks/allstak-java-sdk/allstak-java-core/target/surefire 2026-05-28T19-42-01_732-jvmRun1 surefire-20260528194201785_1tmp surefire_0-20260528194201785_2tmp"/>
     <property name="http.nonProxyHosts" value="local|*.local|169.254/16|*.169.254/16"/>
     <property name="jdk.debug" value="release"/>
     <property name="surefire.test.class.path" value="/Volumes/M.2/MyProjects/AllStak-Projects/sdks/allstak-java-sdk/allstak-java-core/target/test-classes:/Volumes/M.2/MyProjects/AllStak-Projects/sdks/allstak-java-sdk/allstak-java-core/target/classes:/Users/irovler/.m2/repository/com/fasterxml/jackson/core/jackson-databind/2.15.4/jackson-databind-2.15.4.jar:/Users/irovler/.m2/repository/com/fasterxml/jackson/core/jackson-annotations/2.15.4/jackson-annotations-2.15.4.jar:/Users/irovler/.m2/repository/com/fasterxml/jackson/core/jackson-core/2.15.4/jackson-core-2.15.4.jar:/Users/irovler/.m2/repository/org/slf4j/slf4j-api/2.0.12/slf4j-api-2.0.12.jar:/Users/irovler/.m2/repository/org/junit/jupiter/junit-jupiter/5.10.2/junit-jupiter-5.10.2.jar:/Users/irovler/.m2/repository/org/junit/jupiter/junit-jupiter-api/5.10.2/junit-jupiter-api-5.10.2.jar:/Users/irovler/.m2/repository/org/opentest4j/opentest4j/1.3.0/opentest4j-1.3.0.jar:/Users/irovler/.m2/repository/org/junit/platform/junit-platform-commons/1.10.2/junit-platform-commons-1.10.2.jar:/Users/irovler/.m2/repository/org/apiguardian/apiguardian-api/1.1.2/apiguardian-api-1.1.2.jar:/Users/irovler/.m2/repository/org/junit/jupiter/junit-jupiter-params/5.10.2/junit-jupiter-params-5.10.2.jar:/Users/irovler/.m2/repository/org/junit/jupiter/junit-jupiter-engine/5.10.2/junit-jupiter-engine-5.10.2.jar:/Users/irovler/.m2/repository/org/junit/platform/junit-platform-engine/1.10.2/junit-platform-engine-1.10.2.jar:/Users/irovler/.m2/repository/org/wiremock/wiremock-standalone/3.3.1/wiremock-standalone-3.3.1.jar:/Users/irovler/.m2/repository/org/assertj/assertj-core/3.25.3/assertj-core-3.25.3.jar:/Users/irovler/.m2/repository/net/bytebuddy/byte-buddy/1.14.12/byte-buddy-1.14.12.jar:/Users/irovler/.m2/repository/ch/qos/logback/logback-classic/1.4.14/logback-classic-1.4.14.jar:/Users/irovler/.m2/repository/ch/qos/logback/logback-core/1.4.14/logback-core-1.4.14.jar:/Users/irovler/.m2/repository/org/awaitility/awaitility/4.2.0/awaitility-4.2.0.jar:/Users/irovler/.m2/repository/org/hamcrest/hamcrest/2.2/hamcrest-2.2.jar:"/>
@@ -30,7 +30,7 @@
     <property name="java.vm.specification.vendor" value="Oracle Corporation"/>
     <property name="java.specification.name" value="Java Platform API Specification"/>
     <property name="apple.awt.application.name" value="ForkedBooter"/>
-    <property name="surefire.real.class.path" value="/Volumes/M.2/MyProjects/AllStak-Projects/sdks/allstak-java-sdk/allstak-java-core/target/surefire/surefirebooter-20260528191730538_3.jar"/>
+    <property name="surefire.real.class.path" value="/Volumes/M.2/MyProjects/AllStak-Projects/sdks/allstak-java-sdk/allstak-java-core/target/surefire/surefirebooter-20260528194201785_3.jar"/>
     <property name="sun.management.compiler" value="HotSpot 64-Bit Tiered Compilers"/>
     <property name="ftp.nonProxyHosts" value="local|*.local|169.254/16|*.169.254/16"/>
     <property name="java.runtime.version" value="21.0.8+9-LTS"/>
@@ -63,269 +63,269 @@
     <property name="socksNonProxyHosts" value="local|*.local|169.254/16|*.169.254/16"/>
     <property name="java.class.version" value="65.0"/>
   </properties>
-  <testcase name="captureHttpRequest_bufferedAndFlushedInBatch" classname="dev.allstak.AllStakClientIntegrationTest" time="0.539">
-    <system-out><![CDATA[19:18:08.210 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'logs' with 500ms interval
-19:18:08.210 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'http-requests' with 500ms interval
-19:18:08.210 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'db-queries' with 500ms interval
-19:18:08.210 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Global uncaught exception handler installed
-19:18:08.211 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK initialized — host=https://api.allstak.sa, env=test, release=v0.0.1-test
-19:18:08.710 [allstak-flush-http-requests] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flushing 1 http-requests item(s)
-19:18:08.713 [allstak-flush-http-requests] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Sending to http://localhost:51134/ingest/v1/http-requests: event_bytes=261
-19:18:08.717 [allstak-flush-http-requests] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Response from http://localhost:51134/ingest/v1/http-requests: status=202 response_bytes=37
-19:18:08.747 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK shutting down...
-19:18:08.747 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Global uncaught exception handler uninstalled
-19:18:08.747 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'logs' shut down
-19:18:08.748 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'http-requests' shut down
-19:18:08.748 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'db-queries' shut down
-19:18:08.748 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK shut down complete
+  <testcase name="captureHttpRequest_bufferedAndFlushedInBatch" classname="dev.allstak.AllStakClientIntegrationTest" time="0.61">
+    <system-out><![CDATA[19:42:39.158 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'logs' with 500ms interval
+19:42:39.160 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'http-requests' with 500ms interval
+19:42:39.162 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'db-queries' with 500ms interval
+19:42:39.162 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Global uncaught exception handler installed
+19:42:39.162 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK initialized — host=https://api.allstak.sa, env=test, release=v0.0.1-test
+19:42:39.663 [allstak-flush-http-requests] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flushing 1 http-requests item(s)
+19:42:39.666 [allstak-flush-http-requests] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Sending to http://localhost:52941/ingest/v1/http-requests: event_bytes=261
+19:42:39.671 [allstak-flush-http-requests] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Response from http://localhost:52941/ingest/v1/http-requests: status=202 response_bytes=37
+19:42:39.755 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK shutting down...
+19:42:39.755 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Global uncaught exception handler uninstalled
+19:42:39.755 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'logs' shut down
+19:42:39.755 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'http-requests' shut down
+19:42:39.755 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'db-queries' shut down
+19:42:39.755 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK shut down complete
 ]]></system-out>
   </testcase>
-  <testcase name="captureLog_sensitiveMetadataMasked" classname="dev.allstak.AllStakClientIntegrationTest" time="0.01">
-    <system-out><![CDATA[19:18:08.750 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'logs' with 500ms interval
-19:18:08.750 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'http-requests' with 500ms interval
-19:18:08.751 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'db-queries' with 500ms interval
-19:18:08.751 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Global uncaught exception handler installed
-19:18:08.751 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK initialized — host=https://api.allstak.sa, env=test, release=v0.0.1-test
-19:18:08.751 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flushing 1 logs item(s)
-19:18:08.752 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Sending to http://localhost:51134/ingest/v1/logs: event_bytes=213
-19:18:08.757 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Response from http://localhost:51134/ingest/v1/logs: status=202 response_bytes=37
-19:18:08.758 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK shutting down...
-19:18:08.758 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Global uncaught exception handler uninstalled
-19:18:08.758 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'logs' shut down
-19:18:08.759 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'http-requests' shut down
-19:18:08.759 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'db-queries' shut down
-19:18:08.759 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK shut down complete
+  <testcase name="captureLog_sensitiveMetadataMasked" classname="dev.allstak.AllStakClientIntegrationTest" time="0.012">
+    <system-out><![CDATA[19:42:39.758 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'logs' with 500ms interval
+19:42:39.758 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'http-requests' with 500ms interval
+19:42:39.758 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'db-queries' with 500ms interval
+19:42:39.758 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Global uncaught exception handler installed
+19:42:39.758 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK initialized — host=https://api.allstak.sa, env=test, release=v0.0.1-test
+19:42:39.759 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flushing 1 logs item(s)
+19:42:39.759 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Sending to http://localhost:52941/ingest/v1/logs: event_bytes=213
+19:42:39.765 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Response from http://localhost:52941/ingest/v1/logs: status=202 response_bytes=37
+19:42:39.767 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK shutting down...
+19:42:39.768 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Global uncaught exception handler uninstalled
+19:42:39.768 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'logs' shut down
+19:42:39.768 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'http-requests' shut down
+19:42:39.768 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'db-queries' shut down
+19:42:39.768 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK shut down complete
 ]]></system-out>
   </testcase>
-  <testcase name="shutdown_drainsBuffers" classname="dev.allstak.AllStakClientIntegrationTest" time="0.044">
-    <system-out><![CDATA[19:18:08.764 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'logs' with 500ms interval
-19:18:08.765 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'http-requests' with 500ms interval
-19:18:08.774 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'db-queries' with 500ms interval
-19:18:08.774 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Global uncaught exception handler installed
-19:18:08.774 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK initialized — host=https://api.allstak.sa, env=test, release=v0.0.1-test
-19:18:08.775 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK shutting down...
-19:18:08.775 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Global uncaught exception handler uninstalled
-19:18:08.778 [allstak-flush-logs] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flushing 1 logs item(s)
-19:18:08.788 [allstak-flush-logs] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Sending to http://localhost:51134/ingest/v1/logs: event_bytes=193
-19:18:08.799 [allstak-flush-logs] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Response from http://localhost:51134/ingest/v1/logs: status=202 response_bytes=37
-19:18:08.802 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'logs' shut down
-19:18:08.802 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'http-requests' shut down
-19:18:08.802 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'db-queries' shut down
-19:18:08.802 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK shut down complete
+  <testcase name="shutdown_drainsBuffers" classname="dev.allstak.AllStakClientIntegrationTest" time="0.01">
+    <system-out><![CDATA[19:42:39.771 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'logs' with 500ms interval
+19:42:39.771 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'http-requests' with 500ms interval
+19:42:39.771 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'db-queries' with 500ms interval
+19:42:39.771 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Global uncaught exception handler installed
+19:42:39.771 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK initialized — host=https://api.allstak.sa, env=test, release=v0.0.1-test
+19:42:39.772 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK shutting down...
+19:42:39.772 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Global uncaught exception handler uninstalled
+19:42:39.772 [allstak-flush-logs] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flushing 1 logs item(s)
+19:42:39.773 [allstak-flush-logs] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Sending to http://localhost:52941/ingest/v1/logs: event_bytes=193
+19:42:39.777 [allstak-flush-logs] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Response from http://localhost:52941/ingest/v1/logs: status=202 response_bytes=37
+19:42:39.778 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'logs' shut down
+19:42:39.779 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'http-requests' shut down
+19:42:39.779 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'db-queries' shut down
+19:42:39.779 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK shut down complete
 ]]></system-out>
   </testcase>
-  <testcase name="captureHttpRequest_queryParamsStripped" classname="dev.allstak.AllStakClientIntegrationTest" time="0.013">
-    <system-out><![CDATA[19:18:08.805 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'logs' with 500ms interval
-19:18:08.805 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'http-requests' with 500ms interval
-19:18:08.806 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'db-queries' with 500ms interval
-19:18:08.806 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Global uncaught exception handler installed
-19:18:08.806 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK initialized — host=https://api.allstak.sa, env=test, release=v0.0.1-test
-19:18:08.806 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flushing 1 http-requests item(s)
-19:18:08.808 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Sending to http://localhost:51134/ingest/v1/http-requests: event_bytes=263
-19:18:08.814 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Response from http://localhost:51134/ingest/v1/http-requests: status=202 response_bytes=37
-19:18:08.815 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK shutting down...
-19:18:08.815 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Global uncaught exception handler uninstalled
-19:18:08.815 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'logs' shut down
-19:18:08.816 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'http-requests' shut down
-19:18:08.816 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'db-queries' shut down
-19:18:08.816 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK shut down complete
+  <testcase name="captureHttpRequest_queryParamsStripped" classname="dev.allstak.AllStakClientIntegrationTest" time="0.009">
+    <system-out><![CDATA[19:42:39.781 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'logs' with 500ms interval
+19:42:39.781 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'http-requests' with 500ms interval
+19:42:39.781 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'db-queries' with 500ms interval
+19:42:39.781 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Global uncaught exception handler installed
+19:42:39.781 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK initialized — host=https://api.allstak.sa, env=test, release=v0.0.1-test
+19:42:39.782 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flushing 1 http-requests item(s)
+19:42:39.784 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Sending to http://localhost:52941/ingest/v1/http-requests: event_bytes=263
+19:42:39.788 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Response from http://localhost:52941/ingest/v1/http-requests: status=202 response_bytes=37
+19:42:39.788 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK shutting down...
+19:42:39.789 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Global uncaught exception handler uninstalled
+19:42:39.789 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'logs' shut down
+19:42:39.789 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'http-requests' shut down
+19:42:39.789 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'db-queries' shut down
+19:42:39.789 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK shut down complete
 ]]></system-out>
   </testcase>
-  <testcase name="captureLog_invalidLevelDropped" classname="dev.allstak.AllStakClientIntegrationTest" time="0.003">
-    <system-out><![CDATA[19:18:08.817 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'logs' with 500ms interval
-19:18:08.817 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'http-requests' with 500ms interval
-19:18:08.817 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'db-queries' with 500ms interval
-19:18:08.817 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Global uncaught exception handler installed
-19:18:08.818 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK initialized — host=https://api.allstak.sa, env=test, release=v0.0.1-test
-19:18:08.818 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Invalid log level 'invalid_level' — dropping log
-19:18:08.818 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK shutting down...
-19:18:08.818 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Global uncaught exception handler uninstalled
-19:18:08.818 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'logs' shut down
-19:18:08.818 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'http-requests' shut down
-19:18:08.818 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'db-queries' shut down
-19:18:08.818 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK shut down complete
+  <testcase name="captureLog_invalidLevelDropped" classname="dev.allstak.AllStakClientIntegrationTest" time="0.004">
+    <system-out><![CDATA[19:42:39.792 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'logs' with 500ms interval
+19:42:39.792 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'http-requests' with 500ms interval
+19:42:39.792 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'db-queries' with 500ms interval
+19:42:39.792 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Global uncaught exception handler installed
+19:42:39.792 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK initialized — host=https://api.allstak.sa, env=test, release=v0.0.1-test
+19:42:39.793 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Invalid log level 'invalid_level' — dropping log
+19:42:39.793 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK shutting down...
+19:42:39.793 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Global uncaught exception handler uninstalled
+19:42:39.793 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'logs' shut down
+19:42:39.793 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'http-requests' shut down
+19:42:39.793 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'db-queries' shut down
+19:42:39.793 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK shut down complete
 ]]></system-out>
   </testcase>
-  <testcase name="captureLog_bufferedAndFlushed" classname="dev.allstak.AllStakClientIntegrationTest" time="0.52">
-    <system-out><![CDATA[19:18:08.820 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'logs' with 500ms interval
-19:18:08.820 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'http-requests' with 500ms interval
-19:18:08.820 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'db-queries' with 500ms interval
-19:18:08.820 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Global uncaught exception handler installed
-19:18:08.820 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK initialized — host=https://api.allstak.sa, env=test, release=v0.0.1-test
-19:18:09.321 [allstak-flush-logs] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flushing 1 logs item(s)
-19:18:09.322 [allstak-flush-logs] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Sending to http://localhost:51134/ingest/v1/logs: event_bytes=210
-19:18:09.327 [allstak-flush-logs] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Response from http://localhost:51134/ingest/v1/logs: status=202 response_bytes=37
-19:18:09.338 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK shutting down...
-19:18:09.338 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Global uncaught exception handler uninstalled
-19:18:09.339 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'logs' shut down
-19:18:09.339 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'http-requests' shut down
-19:18:09.339 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'db-queries' shut down
-19:18:09.339 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK shut down complete
+  <testcase name="captureLog_bufferedAndFlushed" classname="dev.allstak.AllStakClientIntegrationTest" time="0.518">
+    <system-out><![CDATA[19:42:39.796 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'logs' with 500ms interval
+19:42:39.796 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'http-requests' with 500ms interval
+19:42:39.796 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'db-queries' with 500ms interval
+19:42:39.796 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Global uncaught exception handler installed
+19:42:39.796 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK initialized — host=https://api.allstak.sa, env=test, release=v0.0.1-test
+19:42:40.300 [allstak-flush-logs] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flushing 1 logs item(s)
+19:42:40.300 [allstak-flush-logs] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Sending to http://localhost:52941/ingest/v1/logs: event_bytes=210
+19:42:40.304 [allstak-flush-logs] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Response from http://localhost:52941/ingest/v1/logs: status=202 response_bytes=37
+19:42:40.312 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK shutting down...
+19:42:40.312 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Global uncaught exception handler uninstalled
+19:42:40.312 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'logs' shut down
+19:42:40.312 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'http-requests' shut down
+19:42:40.312 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'db-queries' shut down
+19:42:40.312 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK shut down complete
 ]]></system-out>
   </testcase>
-  <testcase name="flush_sendsBufferedItems" classname="dev.allstak.AllStakClientIntegrationTest" time="0.013">
-    <system-out><![CDATA[19:18:09.341 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'logs' with 500ms interval
-19:18:09.341 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'http-requests' with 500ms interval
-19:18:09.341 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'db-queries' with 500ms interval
-19:18:09.341 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Global uncaught exception handler installed
-19:18:09.341 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK initialized — host=https://api.allstak.sa, env=test, release=v0.0.1-test
-19:18:09.342 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flushing 3 logs item(s)
-19:18:09.343 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Sending to http://localhost:51134/ingest/v1/logs: event_bytes=181
-19:18:09.346 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Response from http://localhost:51134/ingest/v1/logs: status=202 response_bytes=37
-19:18:09.346 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Sending to http://localhost:51134/ingest/v1/logs: event_bytes=181
-19:18:09.349 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Response from http://localhost:51134/ingest/v1/logs: status=202 response_bytes=37
-19:18:09.349 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Sending to http://localhost:51134/ingest/v1/logs: event_bytes=182
-19:18:09.352 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Response from http://localhost:51134/ingest/v1/logs: status=202 response_bytes=37
-19:18:09.352 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK shutting down...
-19:18:09.352 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Global uncaught exception handler uninstalled
-19:18:09.352 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'logs' shut down
-19:18:09.353 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'http-requests' shut down
-19:18:09.353 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'db-queries' shut down
-19:18:09.353 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK shut down complete
+  <testcase name="flush_sendsBufferedItems" classname="dev.allstak.AllStakClientIntegrationTest" time="0.009">
+    <system-out><![CDATA[19:42:40.313 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'logs' with 500ms interval
+19:42:40.313 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'http-requests' with 500ms interval
+19:42:40.313 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'db-queries' with 500ms interval
+19:42:40.313 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Global uncaught exception handler installed
+19:42:40.313 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK initialized — host=https://api.allstak.sa, env=test, release=v0.0.1-test
+19:42:40.314 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flushing 3 logs item(s)
+19:42:40.314 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Sending to http://localhost:52941/ingest/v1/logs: event_bytes=181
+19:42:40.317 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Response from http://localhost:52941/ingest/v1/logs: status=202 response_bytes=37
+19:42:40.317 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Sending to http://localhost:52941/ingest/v1/logs: event_bytes=181
+19:42:40.319 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Response from http://localhost:52941/ingest/v1/logs: status=202 response_bytes=37
+19:42:40.319 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Sending to http://localhost:52941/ingest/v1/logs: event_bytes=182
+19:42:40.321 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Response from http://localhost:52941/ingest/v1/logs: status=202 response_bytes=37
+19:42:40.322 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK shutting down...
+19:42:40.322 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Global uncaught exception handler uninstalled
+19:42:40.322 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'logs' shut down
+19:42:40.322 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'http-requests' shut down
+19:42:40.322 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'db-queries' shut down
+19:42:40.322 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK shut down complete
 ]]></system-out>
   </testcase>
-  <testcase name="captureException_withMetadataAndUserContext" classname="dev.allstak.AllStakClientIntegrationTest" time="0.009">
-    <system-out><![CDATA[19:18:09.355 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'logs' with 500ms interval
-19:18:09.355 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'http-requests' with 500ms interval
-19:18:09.355 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'db-queries' with 500ms interval
-19:18:09.355 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Global uncaught exception handler installed
-19:18:09.355 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK initialized — host=https://api.allstak.sa, env=test, release=v0.0.1-test
-19:18:09.359 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Sending to http://localhost:51134/ingest/v1/errors: event_bytes=22390
-19:18:09.362 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Response from http://localhost:51134/ingest/v1/errors: status=202 response_bytes=37
-19:18:09.363 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK shutting down...
-19:18:09.363 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Global uncaught exception handler uninstalled
-19:18:09.363 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'logs' shut down
-19:18:09.363 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'http-requests' shut down
-19:18:09.363 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'db-queries' shut down
-19:18:09.363 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK shut down complete
+  <testcase name="captureException_withMetadataAndUserContext" classname="dev.allstak.AllStakClientIntegrationTest" time="0.011">
+    <system-out><![CDATA[19:42:40.323 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'logs' with 500ms interval
+19:42:40.324 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'http-requests' with 500ms interval
+19:42:40.324 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'db-queries' with 500ms interval
+19:42:40.324 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Global uncaught exception handler installed
+19:42:40.324 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK initialized — host=https://api.allstak.sa, env=test, release=v0.0.1-test
+19:42:40.326 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Sending to http://localhost:52941/ingest/v1/errors: event_bytes=22390
+19:42:40.331 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Response from http://localhost:52941/ingest/v1/errors: status=202 response_bytes=37
+19:42:40.332 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK shutting down...
+19:42:40.332 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Global uncaught exception handler uninstalled
+19:42:40.332 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'logs' shut down
+19:42:40.332 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'http-requests' shut down
+19:42:40.333 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'db-queries' shut down
+19:42:40.333 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK shut down complete
 ]]></system-out>
   </testcase>
-  <testcase name="cronJobMonitoring_failedFlow" classname="dev.allstak.AllStakClientIntegrationTest" time="0.005">
-    <system-out><![CDATA[19:18:09.365 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'logs' with 500ms interval
-19:18:09.365 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'http-requests' with 500ms interval
-19:18:09.365 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'db-queries' with 500ms interval
-19:18:09.365 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Global uncaught exception handler installed
-19:18:09.365 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK initialized — host=https://api.allstak.sa, env=test, release=v0.0.1-test
-19:18:09.366 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Sending to http://localhost:51134/ingest/v1/heartbeat: event_bytes=135
-19:18:09.368 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Response from http://localhost:51134/ingest/v1/heartbeat: status=202 response_bytes=37
-19:18:09.369 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK shutting down...
-19:18:09.369 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Global uncaught exception handler uninstalled
-19:18:09.369 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'logs' shut down
-19:18:09.369 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'http-requests' shut down
-19:18:09.369 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'db-queries' shut down
-19:18:09.369 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK shut down complete
+  <testcase name="cronJobMonitoring_failedFlow" classname="dev.allstak.AllStakClientIntegrationTest" time="0.008">
+    <system-out><![CDATA[19:42:40.334 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'logs' with 500ms interval
+19:42:40.334 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'http-requests' with 500ms interval
+19:42:40.334 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'db-queries' with 500ms interval
+19:42:40.335 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Global uncaught exception handler installed
+19:42:40.335 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK initialized — host=https://api.allstak.sa, env=test, release=v0.0.1-test
+19:42:40.336 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Sending to http://localhost:52941/ingest/v1/heartbeat: event_bytes=135
+19:42:40.339 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Response from http://localhost:52941/ingest/v1/heartbeat: status=202 response_bytes=37
+19:42:40.340 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK shutting down...
+19:42:40.340 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Global uncaught exception handler uninstalled
+19:42:40.341 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'logs' shut down
+19:42:40.341 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'http-requests' shut down
+19:42:40.341 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'db-queries' shut down
+19:42:40.341 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK shut down complete
 ]]></system-out>
   </testcase>
-  <testcase name="captureException_stackTraceExtracted" classname="dev.allstak.AllStakClientIntegrationTest" time="0.008">
-    <system-out><![CDATA[19:18:09.370 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'logs' with 500ms interval
-19:18:09.371 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'http-requests' with 500ms interval
-19:18:09.371 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'db-queries' with 500ms interval
-19:18:09.371 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Global uncaught exception handler installed
-19:18:09.371 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK initialized — host=https://api.allstak.sa, env=test, release=v0.0.1-test
-19:18:09.373 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Sending to http://localhost:51134/ingest/v1/errors: event_bytes=22273
-19:18:09.377 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Response from http://localhost:51134/ingest/v1/errors: status=202 response_bytes=37
-19:18:09.377 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK shutting down...
-19:18:09.377 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Global uncaught exception handler uninstalled
-19:18:09.378 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'logs' shut down
-19:18:09.378 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'http-requests' shut down
-19:18:09.378 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'db-queries' shut down
-19:18:09.378 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK shut down complete
+  <testcase name="captureException_stackTraceExtracted" classname="dev.allstak.AllStakClientIntegrationTest" time="0.01">
+    <system-out><![CDATA[19:42:40.343 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'logs' with 500ms interval
+19:42:40.343 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'http-requests' with 500ms interval
+19:42:40.343 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'db-queries' with 500ms interval
+19:42:40.343 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Global uncaught exception handler installed
+19:42:40.343 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK initialized — host=https://api.allstak.sa, env=test, release=v0.0.1-test
+19:42:40.347 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Sending to http://localhost:52941/ingest/v1/errors: event_bytes=22273
+19:42:40.351 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Response from http://localhost:52941/ingest/v1/errors: status=202 response_bytes=37
+19:42:40.352 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK shutting down...
+19:42:40.352 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Global uncaught exception handler uninstalled
+19:42:40.352 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'logs' shut down
+19:42:40.352 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'http-requests' shut down
+19:42:40.352 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'db-queries' shut down
+19:42:40.352 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK shut down complete
 ]]></system-out>
   </testcase>
-  <testcase name="afterShutdown_captureIsNoOp" classname="dev.allstak.AllStakClientIntegrationTest" time="0.002">
-    <system-out><![CDATA[19:18:09.379 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'logs' with 500ms interval
-19:18:09.379 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'http-requests' with 500ms interval
-19:18:09.379 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'db-queries' with 500ms interval
-19:18:09.379 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Global uncaught exception handler installed
-19:18:09.379 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK initialized — host=https://api.allstak.sa, env=test, release=v0.0.1-test
-19:18:09.380 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK shutting down...
-19:18:09.380 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Global uncaught exception handler uninstalled
-19:18:09.380 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'logs' shut down
-19:18:09.380 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'http-requests' shut down
-19:18:09.380 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'db-queries' shut down
-19:18:09.380 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK shut down complete
+  <testcase name="afterShutdown_captureIsNoOp" classname="dev.allstak.AllStakClientIntegrationTest" time="0.003">
+    <system-out><![CDATA[19:42:40.354 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'logs' with 500ms interval
+19:42:40.355 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'http-requests' with 500ms interval
+19:42:40.355 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'db-queries' with 500ms interval
+19:42:40.355 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Global uncaught exception handler installed
+19:42:40.355 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK initialized — host=https://api.allstak.sa, env=test, release=v0.0.1-test
+19:42:40.355 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK shutting down...
+19:42:40.355 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Global uncaught exception handler uninstalled
+19:42:40.355 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'logs' shut down
+19:42:40.355 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'http-requests' shut down
+19:42:40.355 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'db-queries' shut down
+19:42:40.355 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK shut down complete
 ]]></system-out>
   </testcase>
-  <testcase name="authFailure_disablesAllOperations" classname="dev.allstak.AllStakClientIntegrationTest" time="0.008">
-    <system-out><![CDATA[19:18:09.381 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'logs' with 500ms interval
-19:18:09.382 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'http-requests' with 500ms interval
-19:18:09.382 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'db-queries' with 500ms interval
-19:18:09.382 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Global uncaught exception handler installed
-19:18:09.382 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK initialized — host=https://api.allstak.sa, env=test, release=v0.0.1-test
-19:18:09.384 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Sending to http://localhost:51134/ingest/v1/errors: event_bytes=22251
-19:18:09.387 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Response from http://localhost:51134/ingest/v1/errors: status=401 response_bytes=52
-19:18:09.387 [main] WARN dev.allstak.sdk -- [AllStak SDK] Invalid API key — disabling SDK
-19:18:09.387 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK shutting down...
-19:18:09.387 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Global uncaught exception handler uninstalled
-19:18:09.387 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'logs' shut down
-19:18:09.387 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'http-requests' shut down
-19:18:09.388 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'db-queries' shut down
-19:18:09.388 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK shut down complete
+  <testcase name="authFailure_disablesAllOperations" classname="dev.allstak.AllStakClientIntegrationTest" time="0.019">
+    <system-out><![CDATA[19:42:40.358 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'logs' with 500ms interval
+19:42:40.359 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'http-requests' with 500ms interval
+19:42:40.359 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'db-queries' with 500ms interval
+19:42:40.359 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Global uncaught exception handler installed
+19:42:40.359 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK initialized — host=https://api.allstak.sa, env=test, release=v0.0.1-test
+19:42:40.364 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Sending to http://localhost:52941/ingest/v1/errors: event_bytes=22251
+19:42:40.373 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Response from http://localhost:52941/ingest/v1/errors: status=401 response_bytes=52
+19:42:40.374 [main] WARN dev.allstak.sdk -- [AllStak SDK] Invalid API key — disabling SDK
+19:42:40.375 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK shutting down...
+19:42:40.375 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Global uncaught exception handler uninstalled
+19:42:40.375 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'logs' shut down
+19:42:40.375 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'http-requests' shut down
+19:42:40.375 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'db-queries' shut down
+19:42:40.375 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK shut down complete
 ]]></system-out>
   </testcase>
-  <testcase name="captureException_sendsImmediately" classname="dev.allstak.AllStakClientIntegrationTest" time="0.006">
-    <system-out><![CDATA[19:18:09.389 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'logs' with 500ms interval
-19:18:09.389 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'http-requests' with 500ms interval
-19:18:09.389 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'db-queries' with 500ms interval
-19:18:09.389 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Global uncaught exception handler installed
-19:18:09.389 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK initialized — host=https://api.allstak.sa, env=test, release=v0.0.1-test
-19:18:09.391 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Sending to http://localhost:51134/ingest/v1/errors: event_bytes=22247
-19:18:09.393 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Response from http://localhost:51134/ingest/v1/errors: status=202 response_bytes=37
-19:18:09.394 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK shutting down...
-19:18:09.394 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Global uncaught exception handler uninstalled
-19:18:09.394 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'logs' shut down
-19:18:09.394 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'http-requests' shut down
-19:18:09.394 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'db-queries' shut down
-19:18:09.394 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK shut down complete
+  <testcase name="captureException_sendsImmediately" classname="dev.allstak.AllStakClientIntegrationTest" time="0.009">
+    <system-out><![CDATA[19:42:40.377 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'logs' with 500ms interval
+19:42:40.377 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'http-requests' with 500ms interval
+19:42:40.377 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'db-queries' with 500ms interval
+19:42:40.377 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Global uncaught exception handler installed
+19:42:40.377 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK initialized — host=https://api.allstak.sa, env=test, release=v0.0.1-test
+19:42:40.380 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Sending to http://localhost:52941/ingest/v1/errors: event_bytes=22247
+19:42:40.383 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Response from http://localhost:52941/ingest/v1/errors: status=202 response_bytes=37
+19:42:40.384 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK shutting down...
+19:42:40.384 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Global uncaught exception handler uninstalled
+19:42:40.384 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'logs' shut down
+19:42:40.384 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'http-requests' shut down
+19:42:40.385 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'db-queries' shut down
+19:42:40.385 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK shut down complete
 ]]></system-out>
   </testcase>
-  <testcase name="captureException_sensitiveMetadataMasked" classname="dev.allstak.AllStakClientIntegrationTest" time="0.006">
-    <system-out><![CDATA[19:18:09.395 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'logs' with 500ms interval
-19:18:09.395 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'http-requests' with 500ms interval
-19:18:09.395 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'db-queries' with 500ms interval
-19:18:09.395 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Global uncaught exception handler installed
-19:18:09.395 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK initialized — host=https://api.allstak.sa, env=test, release=v0.0.1-test
-19:18:09.398 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Sending to http://localhost:51134/ingest/v1/errors: event_bytes=22308
-19:18:09.400 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Response from http://localhost:51134/ingest/v1/errors: status=202 response_bytes=37
-19:18:09.401 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK shutting down...
-19:18:09.401 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Global uncaught exception handler uninstalled
-19:18:09.401 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'logs' shut down
-19:18:09.401 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'http-requests' shut down
-19:18:09.401 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'db-queries' shut down
-19:18:09.401 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK shut down complete
+  <testcase name="captureException_sensitiveMetadataMasked" classname="dev.allstak.AllStakClientIntegrationTest" time="0.009">
+    <system-out><![CDATA[19:42:40.388 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'logs' with 500ms interval
+19:42:40.388 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'http-requests' with 500ms interval
+19:42:40.388 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'db-queries' with 500ms interval
+19:42:40.388 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Global uncaught exception handler installed
+19:42:40.388 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK initialized — host=https://api.allstak.sa, env=test, release=v0.0.1-test
+19:42:40.390 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Sending to http://localhost:52941/ingest/v1/errors: event_bytes=22308
+19:42:40.393 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Response from http://localhost:52941/ingest/v1/errors: status=202 response_bytes=37
+19:42:40.393 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK shutting down...
+19:42:40.393 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Global uncaught exception handler uninstalled
+19:42:40.393 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'logs' shut down
+19:42:40.394 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'http-requests' shut down
+19:42:40.394 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'db-queries' shut down
+19:42:40.394 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK shut down complete
 ]]></system-out>
   </testcase>
-  <testcase name="captureLog_withServiceAndTraceId" classname="dev.allstak.AllStakClientIntegrationTest" time="0.005">
-    <system-out><![CDATA[19:18:09.403 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'logs' with 500ms interval
-19:18:09.403 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'http-requests' with 500ms interval
-19:18:09.403 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'db-queries' with 500ms interval
-19:18:09.403 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Global uncaught exception handler installed
-19:18:09.403 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK initialized — host=https://api.allstak.sa, env=test, release=v0.0.1-test
-19:18:09.403 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flushing 1 logs item(s)
-19:18:09.404 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Sending to http://localhost:51134/ingest/v1/logs: event_bytes=239
-19:18:09.407 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Response from http://localhost:51134/ingest/v1/logs: status=202 response_bytes=37
-19:18:09.407 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK shutting down...
-19:18:09.407 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Global uncaught exception handler uninstalled
-19:18:09.407 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'logs' shut down
-19:18:09.407 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'http-requests' shut down
-19:18:09.407 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'db-queries' shut down
-19:18:09.407 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK shut down complete
+  <testcase name="captureLog_withServiceAndTraceId" classname="dev.allstak.AllStakClientIntegrationTest" time="0.006">
+    <system-out><![CDATA[19:42:40.395 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'logs' with 500ms interval
+19:42:40.396 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'http-requests' with 500ms interval
+19:42:40.396 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'db-queries' with 500ms interval
+19:42:40.396 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Global uncaught exception handler installed
+19:42:40.396 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK initialized — host=https://api.allstak.sa, env=test, release=v0.0.1-test
+19:42:40.396 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flushing 1 logs item(s)
+19:42:40.397 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Sending to http://localhost:52941/ingest/v1/logs: event_bytes=239
+19:42:40.400 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Response from http://localhost:52941/ingest/v1/logs: status=202 response_bytes=37
+19:42:40.401 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK shutting down...
+19:42:40.401 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Global uncaught exception handler uninstalled
+19:42:40.401 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'logs' shut down
+19:42:40.401 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'http-requests' shut down
+19:42:40.401 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'db-queries' shut down
+19:42:40.401 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK shut down complete
 ]]></system-out>
   </testcase>
-  <testcase name="cronJobMonitoring_successFlow" classname="dev.allstak.AllStakClientIntegrationTest" time="0.06">
-    <system-out><![CDATA[19:18:09.408 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'logs' with 500ms interval
-19:18:09.408 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'http-requests' with 500ms interval
-19:18:09.408 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'db-queries' with 500ms interval
-19:18:09.408 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Global uncaught exception handler installed
-19:18:09.408 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK initialized — host=https://api.allstak.sa, env=test, release=v0.0.1-test
-19:18:09.464 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Sending to http://localhost:51134/ingest/v1/heartbeat: event_bytes=136
-19:18:09.466 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Response from http://localhost:51134/ingest/v1/heartbeat: status=202 response_bytes=37
-19:18:09.467 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK shutting down...
-19:18:09.467 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Global uncaught exception handler uninstalled
-19:18:09.467 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'logs' shut down
-19:18:09.467 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'http-requests' shut down
-19:18:09.467 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'db-queries' shut down
-19:18:09.467 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK shut down complete
+  <testcase name="cronJobMonitoring_successFlow" classname="dev.allstak.AllStakClientIntegrationTest" time="0.062">
+    <system-out><![CDATA[19:42:40.403 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'logs' with 500ms interval
+19:42:40.403 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'http-requests' with 500ms interval
+19:42:40.403 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker started for 'db-queries' with 500ms interval
+19:42:40.403 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Global uncaught exception handler installed
+19:42:40.403 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK initialized — host=https://api.allstak.sa, env=test, release=v0.0.1-test
+19:42:40.459 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Sending to http://localhost:52941/ingest/v1/heartbeat: event_bytes=136
+19:42:40.462 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Response from http://localhost:52941/ingest/v1/heartbeat: status=202 response_bytes=37
+19:42:40.463 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK shutting down...
+19:42:40.463 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Global uncaught exception handler uninstalled
+19:42:40.463 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'logs' shut down
+19:42:40.463 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'http-requests' shut down
+19:42:40.463 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] Flush worker 'db-queries' shut down
+19:42:40.463 [main] INFO dev.allstak.sdk -- [AllStak SDK DEBUG] AllStak SDK shut down complete
 ]]></system-out>
   </testcase>
 </testsuite>

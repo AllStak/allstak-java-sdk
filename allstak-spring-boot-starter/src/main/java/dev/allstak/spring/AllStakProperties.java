@@ -50,6 +50,27 @@ public class AllStakProperties {
     private double sampleRate = 1.0;
     /** Span sampling rate in [0.0, 1.0]. Null (default) = always-on legacy behavior. */
     private Double tracesSampleRate;
+    /** Phase A.3 — privacy-by-default. Strip user.email/ip + request bodies unless true. */
+    private boolean sendDefaultPii = false;
+    /** Phase A.2 — open one release-health session per JVM. */
+    private boolean enableAutoSessionTracking = true;
+    /** Phase A.4 — regex / substring allowlist for outbound trace-header injection. */
+    private java.util.List<String> tracePropagationTargets;
+    /** Phase E.2 — start a JFR-based continuous profiler at app boot. */
+    private boolean enableProfiling = false;
+    /** Phase B/C feature gates — let users disable individual integrations without
+     *  removing the module from the classpath. Defaults follow Sentry's stance:
+     *  on when the dependency is present. */
+    private boolean captureOkHttp = true;
+    private boolean captureApacheHttp = true;
+    private boolean captureFeign = true;
+    private boolean captureReactor = true;
+    private boolean captureQuartz = true;
+    private boolean captureKafka = true;
+    private boolean captureSecurityUser = true;
+    private boolean captureLettuce = true;
+    private boolean captureGraphql = true;
+    private boolean captureSpringCache = true;
 
     public boolean isInstallUncaughtExceptionHandler() { return installUncaughtExceptionHandler; }
     public void setInstallUncaughtExceptionHandler(boolean installUncaughtExceptionHandler) { this.installUncaughtExceptionHandler = installUncaughtExceptionHandler; }
@@ -91,4 +112,34 @@ public class AllStakProperties {
     public void setCaptureLogs(boolean captureLogs) { this.captureLogs = captureLogs; }
     public boolean isCaptureScheduled() { return captureScheduled; }
     public void setCaptureScheduled(boolean captureScheduled) { this.captureScheduled = captureScheduled; }
+
+    public boolean isSendDefaultPii() { return sendDefaultPii; }
+    public void setSendDefaultPii(boolean sendDefaultPii) { this.sendDefaultPii = sendDefaultPii; }
+    public boolean isEnableAutoSessionTracking() { return enableAutoSessionTracking; }
+    public void setEnableAutoSessionTracking(boolean v) { this.enableAutoSessionTracking = v; }
+    public java.util.List<String> getTracePropagationTargets() { return tracePropagationTargets; }
+    public void setTracePropagationTargets(java.util.List<String> tracePropagationTargets) { this.tracePropagationTargets = tracePropagationTargets; }
+    public boolean isEnableProfiling() { return enableProfiling; }
+    public void setEnableProfiling(boolean enableProfiling) { this.enableProfiling = enableProfiling; }
+
+    public boolean isCaptureOkHttp() { return captureOkHttp; }
+    public void setCaptureOkHttp(boolean v) { this.captureOkHttp = v; }
+    public boolean isCaptureApacheHttp() { return captureApacheHttp; }
+    public void setCaptureApacheHttp(boolean v) { this.captureApacheHttp = v; }
+    public boolean isCaptureFeign() { return captureFeign; }
+    public void setCaptureFeign(boolean v) { this.captureFeign = v; }
+    public boolean isCaptureReactor() { return captureReactor; }
+    public void setCaptureReactor(boolean v) { this.captureReactor = v; }
+    public boolean isCaptureQuartz() { return captureQuartz; }
+    public void setCaptureQuartz(boolean v) { this.captureQuartz = v; }
+    public boolean isCaptureKafka() { return captureKafka; }
+    public void setCaptureKafka(boolean v) { this.captureKafka = v; }
+    public boolean isCaptureSecurityUser() { return captureSecurityUser; }
+    public void setCaptureSecurityUser(boolean v) { this.captureSecurityUser = v; }
+    public boolean isCaptureLettuce() { return captureLettuce; }
+    public void setCaptureLettuce(boolean v) { this.captureLettuce = v; }
+    public boolean isCaptureGraphql() { return captureGraphql; }
+    public void setCaptureGraphql(boolean v) { this.captureGraphql = v; }
+    public boolean isCaptureSpringCache() { return captureSpringCache; }
+    public void setCaptureSpringCache(boolean v) { this.captureSpringCache = v; }
 }
