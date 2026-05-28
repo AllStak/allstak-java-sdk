@@ -1,10 +1,11 @@
 # AllStak Java SDK
 
-AllStak SDK for Java and Spring Boot. Captures exceptions, logs, inbound and outbound HTTP requests, spans, JDBC telemetry, and scheduled job telemetry.
+AllStak SDK for Java and Spring Boot. Captures exceptions, logs, inbound
+and outbound HTTP requests, spans, JDBC and reactive DB queries,
+scheduled jobs, message-queue work, cache calls, GraphQL operations,
+release-health sessions, and continuous JVM profiles.
 
-## Install
-
-Spring Boot:
+## One package, everything covered
 
 ```xml
 <dependency>
@@ -14,7 +15,44 @@ Spring Boot:
 </dependency>
 ```
 
-Plain Java:
+That is the entire dependency surface a Spring Boot consumer has to learn.
+
+The starter pulls every AllStak instrumentation glue module transitively
+(~190 KB total), but **none** of their underlying third-party libraries
+(OkHttp, Apache HTTP 5, Kafka clients, MongoDB driver, Lettuce, Jedis,
+Quartz, …). Each instrumentation lights up automatically the moment
+your existing classpath already includes the matching library —
+`@ConditionalOnClass` is the gate.
+
+### What auto-activates when
+
+| If your app uses…                       | AllStak activates                                       |
+|-----------------------------------------|---------------------------------------------------------|
+| Spring MVC / Servlet                    | Inbound HTTP capture + scope per request                |
+| `RestTemplate` / `WebClient`            | Outbound HTTP span + trace headers                      |
+| OkHttp                                  | Outbound HTTP span + trace headers                      |
+| Apache HttpClient 5                     | Outbound HTTP span + trace headers                      |
+| OpenFeign                               | Trace-header injection                                  |
+| Project Reactor                         | Scope propagation across thread hops                    |
+| `@Scheduled` / Quartz                   | Cron check-ins, error capture                           |
+| Kafka clients                           | Producer + consumer trace propagation                   |
+| Spring Security                         | Authenticated principal → scope user                    |
+| JDBC `DataSource`                       | Span per query                                          |
+| R2DBC                                   | Span per reactive query                                 |
+| MongoDB driver                          | Span per command                                        |
+| Lettuce / Jedis                         | Span per Redis command                                  |
+| Spring Cache                            | Span per get / put / evict                              |
+| graphql-java                            | Span per GraphQL operation                              |
+| gRPC                                    | Client + server interceptors (trace propagation)        |
+| Logback / Log4j2 / JUL                  | Logs → events / breadcrumbs                             |
+| Java Flight Recorder (`enable-profiling=true`) | Continuous CPU profile                            |
+| Kotlin coroutines                       | `ScopeSnapshot` helper                                  |
+| OpenTelemetry SDK                       | `SpanProcessor` bridge into AllStak                     |
+
+Disable any one with `allstak.capture-<name>=false`; everything is on
+by default when its library is present.
+
+### Plain Java (no Spring Boot)
 
 ```xml
 <dependency>
@@ -24,17 +62,9 @@ Plain Java:
 </dependency>
 ```
 
-## Spring Boot setup
-
-```yaml
-allstak:
-  api-key: ${ALLSTAK_API_KEY}
-  environment: production
-  release: ${ALLSTAK_RELEASE}
-  service-name: checkout-api
-```
-
-The starter auto-registers servlet request capture, exception capture, log capture, `RestTemplate`, `WebClient`, scheduled job, and JDBC integrations when those components are present.
+Then wire individual instrumentation modules where your code constructs
+the third-party client. See each module's README under the repo root
+for a one-liner example.
 
 ## Plain Java setup
 

@@ -111,24 +111,44 @@
             <optional>true</optional>
         </dependency>
 
-        <!-- Phase B/C/E modules — all optional so the starter pulls them in
-             only when the customer adds the corresponding integration to
-             their app. Each nested @Configuration in AllStakAutoConfiguration
-             is gated by @ConditionalOnClass for the third-party library
-             that the module depends on. -->
-        <dependency><groupId>sa.allstak</groupId><artifactId>allstak-okhttp</artifactId><version>${project.version}</version><optional>true</optional></dependency>
-        <dependency><groupId>sa.allstak</groupId><artifactId>allstak-apache-http-client-5</artifactId><version>${project.version}</version><optional>true</optional></dependency>
-        <dependency><groupId>sa.allstak</groupId><artifactId>allstak-openfeign</artifactId><version>${project.version}</version><optional>true</optional></dependency>
-        <dependency><groupId>sa.allstak</groupId><artifactId>allstak-reactor</artifactId><version>${project.version}</version><optional>true</optional></dependency>
-        <dependency><groupId>sa.allstak</groupId><artifactId>allstak-quartz</artifactId><version>${project.version}</version><optional>true</optional></dependency>
-        <dependency><groupId>sa.allstak</groupId><artifactId>allstak-spring-security</artifactId><version>${project.version}</version><optional>true</optional></dependency>
-        <dependency><groupId>sa.allstak</groupId><artifactId>allstak-spring-cache</artifactId><version>${project.version}</version><optional>true</optional></dependency>
-        <dependency><groupId>sa.allstak</groupId><artifactId>allstak-profiling-jfr</artifactId><version>${project.version}</version><optional>true</optional></dependency>
-        <!-- Reactor + Quartz + OkHttp + Apache HTTP 5 + Feign + Security + Cache
-             SDK modules also need their *third-party* libraries on the classpath
-             at compile time so the auto-config class above can resolve type
-             references when Maven invokes javac. Optional + provided keeps them
-             off the runtime classpath for apps that don't use that integration. -->
+        <!-- Phase B–F integration modules — pulled in transitively by the
+             starter (NOT optional). Each module brings tiny AllStak glue
+             code only; its third-party library is declared `provided`
+             inside that module's own pom, so the customer's existing
+             classpath decides which integration actually activates at
+             runtime via @ConditionalOnClass.
+
+             Result: ONE dependency in the customer's pom — every
+             instrumentation lights up automatically the moment they
+             use the matching library (OkHttp, Kafka, Mongo, …). No
+             extra coordinates to learn or version-pin. -->
+        <dependency><groupId>sa.allstak</groupId><artifactId>allstak-okhttp</artifactId><version>${project.version}</version></dependency>
+        <dependency><groupId>sa.allstak</groupId><artifactId>allstak-apache-http-client-5</artifactId><version>${project.version}</version></dependency>
+        <dependency><groupId>sa.allstak</groupId><artifactId>allstak-openfeign</artifactId><version>${project.version}</version></dependency>
+        <dependency><groupId>sa.allstak</groupId><artifactId>allstak-reactor</artifactId><version>${project.version}</version></dependency>
+        <dependency><groupId>sa.allstak</groupId><artifactId>allstak-quartz</artifactId><version>${project.version}</version></dependency>
+        <dependency><groupId>sa.allstak</groupId><artifactId>allstak-kafka</artifactId><version>${project.version}</version></dependency>
+        <dependency><groupId>sa.allstak</groupId><artifactId>allstak-spring-security</artifactId><version>${project.version}</version></dependency>
+        <dependency><groupId>sa.allstak</groupId><artifactId>allstak-lettuce</artifactId><version>${project.version}</version></dependency>
+        <dependency><groupId>sa.allstak</groupId><artifactId>allstak-jedis</artifactId><version>${project.version}</version></dependency>
+        <dependency><groupId>sa.allstak</groupId><artifactId>allstak-mongodb</artifactId><version>${project.version}</version></dependency>
+        <dependency><groupId>sa.allstak</groupId><artifactId>allstak-r2dbc</artifactId><version>${project.version}</version></dependency>
+        <dependency><groupId>sa.allstak</groupId><artifactId>allstak-graphql</artifactId><version>${project.version}</version></dependency>
+        <dependency><groupId>sa.allstak</groupId><artifactId>allstak-spring-cache</artifactId><version>${project.version}</version></dependency>
+        <dependency><groupId>sa.allstak</groupId><artifactId>allstak-profiling-jfr</artifactId><version>${project.version}</version></dependency>
+        <dependency><groupId>sa.allstak</groupId><artifactId>allstak-opentelemetry</artifactId><version>${project.version}</version></dependency>
+        <dependency><groupId>sa.allstak</groupId><artifactId>allstak-kotlin-coroutines</artifactId><version>${project.version}</version></dependency>
+        <dependency><groupId>sa.allstak</groupId><artifactId>allstak-jms</artifactId><version>${project.version}</version></dependency>
+        <dependency><groupId>sa.allstak</groupId><artifactId>allstak-rabbitmq</artifactId><version>${project.version}</version></dependency>
+        <dependency><groupId>sa.allstak</groupId><artifactId>allstak-grpc</artifactId><version>${project.version}</version></dependency>
+
+        <!-- Third-party libs the auto-config class itself references at
+             compile time. `optional=true` keeps them OFF the customer's
+             runtime classpath: the type references only need to resolve
+             during javac on the starter; at runtime
+             @ConditionalOnClass(name=…) is a class-loader check that
+             reads byte names, not the type, so a missing class on the
+             customer side simply skips the nested @Configuration. -->
         <dependency><groupId>com.squareup.okhttp3</groupId><artifactId>okhttp</artifactId><version>4.12.0</version><optional>true</optional></dependency>
         <dependency><groupId>org.apache.httpcomponents.client5</groupId><artifactId>httpclient5</artifactId><version>5.3.1</version><optional>true</optional></dependency>
         <dependency><groupId>io.github.openfeign</groupId><artifactId>feign-core</artifactId><version>13.2</version><optional>true</optional></dependency>

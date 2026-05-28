@@ -88,6 +88,21 @@ All notable changes to the AllStak Java SDK live here. Format follows
 - `allstak-opentelemetry` — `SpanProcessor` that forwards finished
   OTel spans into AllStak's transport.
 
+### Changed — Phase H (one-package UX)
+
+- `allstak-spring-boot-starter` now transitively pulls every Phase B–F
+  integration glue module at `compile` scope. A Spring Boot consumer
+  adds **one** dependency and every instrumentation activates
+  automatically based on what's already on their classpath
+  (via `@ConditionalOnClass`).
+- Total transitive footprint is ~190 KB of AllStak glue code; none of
+  the third-party libraries (OkHttp, Kafka clients, Mongo driver,
+  Lettuce, Jedis, Quartz, …) leak through, because each integration
+  module declares its third-party dep as `provided`.
+- Per-module artefact IDs remain published — power users who need
+  pinpoint control can still depend on `allstak-okhttp` alone with
+  `allstak-java-core`. The one-package path is the recommended one.
+
 ### Added — Phase G (Spring Boot auto-wiring)
 
 - Each Phase B/C/E module is now auto-wired by
