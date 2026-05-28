@@ -39,7 +39,10 @@ public final class AllStakJfrProfiler {
     private final Recording recording;
     private final ScheduledExecutorService scheduler;
     private final Path workDir;
-    private final String chunkPath = "/ingest/v1/profiles";
+    /** Dedicated JFR route — the legacy {@code /ingest/v1/profiles}
+     *  expects pre-parsed samples, while this endpoint stores the raw
+     *  binary chunk for an async parser to fan out server-side. */
+    private final String chunkPath = "/ingest/v1/profiles/jfr";
     private volatile boolean stopped = false;
 
     private AllStakJfrProfiler(Recording recording, Path workDir) {
@@ -95,11 +98,17 @@ public final class AllStakJfrProfiler {
             recording.dump(chunkFile);
             byte[] bytes = Files.readAllBytes(chunkFile);
             Files.deleteIfExists(chunkFile);
-            // Wrap bytes in a JSON envelope the backend recognises. Profile
-            // payloads are opaque binary — we base64-encode for transit
-            // (no streaming upload yet to keep the transport simple).
-            String envelope = "{\"format\":\"jfr\",\"chunkBase64\":\""
-                    + java.util.Base64.getEncoder().encodeToString(bytes) + "\"}";
+            // Backend-shaped JfrProfileIngestRequest: format + chunkBase64
+            // plus optional environment / release / sdk identifiers picked
+            // up from the live AllStakConfig so the dashboard can group
+            // profiles by deployment without an extra config step.
+            java.util.LinkedHashMap<String, Object> envelope = new java.util.LinkedHashMap<>();
+            envelope.put("format", "jfr");
+            envelope.put("chunkBase64", java.util.Base64.getEncoder().encodeToString(bytes));
+            envelope.put("environment", client.getConfig().getEnvironment());
+            envelope.put("release", client.getConfig().getRelease());
+            envelope.put("sdkName", client.getConfig().getSdkName());
+            envelope.put("sdkVersion", client.getConfig().getSdkVersion());
             client.getTransport().send(chunkPath, envelope);
         } catch (Throwable t) {
             SdkLogger.debug("JFR chunk rotation failed: {}", t.getMessage());

@@ -25,14 +25,23 @@ jobs:
           gpg-private-key: ${{ secrets.MAVEN_GPG_PRIVATE_KEY }}
           gpg-passphrase: MAVEN_GPG_PASSPHRASE
 
+      # Verify the BOM + every SDK module + the maven plugin. Sample app is
+      # deliberately excluded (it's the internal validation harness, marked
+      # maven.deploy.skip in its pom).
       - name: Verify
-        run: ./mvnw -B -pl .,allstak-java-core,allstak-spring-boot-starter verify
+        run: ./mvnw -B -pl '!allstak-sample-app' verify
 
+      # Deploy every artefact except the sample app to Maven Central.
+      # central-publishing-maven-plugin (release profile in the parent pom)
+      # signs, uploads, then blocks until Sonatype validates the bundle.
       - name: Deploy
-        run: ./mvnw -B -pl .,allstak-java-core,allstak-spring-boot-starter -DskipTests -P release deploy
+        run: ./mvnw -B -pl '!allstak-sample-app' -DskipTests -P release deploy
         env:
           MAVEN_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
           MAVEN_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+          # If the GPG key was generated without a passphrase the env var
+          # below is simply empty; setup-java's gpg-passphrase is still
+          # supplied so the maven-gpg-plugin reads it without prompting.
           MAVEN_GPG_PASSPHRASE: ${{ secrets.MAVEN_GPG_PASSPHRASE }}
 
       - name: Create GitHub Release

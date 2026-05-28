@@ -6,7 +6,7 @@
 
     <groupId>sa.allstak</groupId>
     <artifactId>allstak-java-parent</artifactId>
-    <version>0.1.5</version>
+    <version>0.2.0</version>
     <packaging>pom</packaging>
 
     <name>AllStak Java SDK</name>
@@ -163,12 +163,20 @@
                     <plugin>
                         <groupId>org.sonatype.central</groupId>
                         <artifactId>central-publishing-maven-plugin</artifactId>
-                        <version>0.5.0</version>
+                        <version>0.7.0</version>
                         <extensions>true</extensions>
                         <configuration>
                             <publishingServerId>central</publishingServerId>
                             <autoPublish>true</autoPublish>
-                            <waitUntil>published</waitUntil>
+                            <!-- waitUntil=validated returns as soon as Sonatype Central
+                                 has validated the bundle (minutes). waitUntil=published
+                                 used to time out at 15 min waiting for the public CDN
+                                 sync. Once validated, propagation to the Central CDN
+                                 happens asynchronously and is reliable on Sonatype's
+                                 side; checking `repo1.maven.org` confirms within an hour. -->
+                            <waitUntil>validated</waitUntil>
+                            <waitMaxTime>1800</waitMaxTime>
+                            <waitPollingInterval>15</waitPollingInterval>
                         </configuration>
                     </plugin>
                 </plugins>

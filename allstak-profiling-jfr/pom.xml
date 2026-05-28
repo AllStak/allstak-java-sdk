@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0">
     <modelVersion>4.0.0</modelVersion>
-    <parent><groupId>sa.allstak</groupId><artifactId>allstak-java-parent</artifactId><version>0.1.5</version><relativePath>../pom.xml</relativePath></parent>
+    <parent><groupId>sa.allstak</groupId><artifactId>allstak-java-parent</artifactId><version>0.2.0</version><relativePath>../pom.xml</relativePath></parent>
     <artifactId>allstak-profiling-jfr</artifactId>
     <name>AllStak Java SDK - JFR Profiler</name>
     <description>Continuous JFR-based profiler. Ships profile chunks via the AllStak transport.</description>

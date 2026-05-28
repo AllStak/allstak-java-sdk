@@ -30,7 +30,15 @@ public final class AllStakClient {
     private static final String PATH_SPANS = "/ingest/v1/spans";
     private static final String PATH_RELEASES = "/ingest/v1/releases";
     private static final String PATH_FEEDBACK = "/ingest/v1/feedback";
+    /** Generic SDK attachment path. The dedicated
+     *  {@code /ingest/v1/errors/{eventId}/attachments} screenshot path
+     *  exists too but enforces image-only MIME + redaction modes; the
+     *  SDK posts here so logs, configs, and other structured context
+     *  go through. {@code eventId} travels in the body. */
     private static final String PATH_ATTACHMENTS = "/ingest/v1/attachments";
+    /** Raw JFR chunks travel through a dedicated route so the parser
+     *  fan-out happens server-side. */
+    private static final String PATH_PROFILES_JFR = "/ingest/v1/profiles/jfr";
 
     private static final int HTTP_BATCH_MAX = 100;
     private static final int DB_BATCH_MAX = 100;
@@ -833,16 +841,23 @@ public final class AllStakClient {
     }
 
     /**
-     * Upload a binary attachment. Body is delivered as base64-wrapped JSON
-     * so the standard transport pipeline (retry / rate-limit) applies.
+     * Upload a binary attachment tied to a previously captured error event.
+     * Posted as the existing {@code POST /ingest/v1/errors/{eventId}/attachments}
+     * envelope (same shape as the screenshot-capture path used by the JS
+     * SDK) so the dashboard renders it inline on the issue page.
      */
     public void captureAttachment(dev.allstak.feedback.Attachment attachment) {
         if (shutdown.get() || transport.isDisabled() || attachment == null) return;
+        if (attachment.getEventId() == null || attachment.getEventId().isBlank()) {
+            SdkLogger.debug("Attachment dropped — missing eventId");
+            return;
+        }
         try {
             Map<String, Object> payload = new LinkedHashMap<>();
-            payload.put("filename", attachment.getFilename());
+            payload.put("eventId", attachment.getEventId());
+            payload.put("kind", attachment.getKind() == null ? "attachment" : attachment.getKind());
             payload.put("contentType", attachment.getContentType());
-            payload.put("bytesBase64",
+            payload.put("dataBase64",
                     attachment.getBytes() == null ? "" : java.util.Base64.getEncoder().encodeToString(attachment.getBytes()));
             transport.send(PATH_ATTACHMENTS, payload);
         } catch (Exception e) {

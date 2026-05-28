@@ -73,7 +73,11 @@ public class PhaseAController {
     @GetMapping("/attachment/demo")
     public String attachmentDemo() {
         byte[] bytes = "AllStak attachment demo — text/plain".getBytes(StandardCharsets.UTF_8);
-        AllStak.captureAttachment(new Attachment("demo.txt", "text/plain", bytes));
+        // Attachments are tied to a specific captured error event. The
+        // production flow takes the eventId returned by
+        // AllStak.captureException; here we synthesise one for the demo.
+        AllStak.captureAttachment(new Attachment(
+                java.util.UUID.randomUUID().toString(), "log", "text/plain", bytes));
         return "attachment queued (size=" + bytes.length + ")";
     }
 
