@@ -14,8 +14,12 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.containing;
@@ -53,8 +57,32 @@ class AllStakLog4j2AppenderTest {
         wireMock.stop();
     }
 
+    /** Other tests' Spring auto-configuration leaves an AllStakLogbackAppender
+     *  on the root logger. It would catch any SLF4J emission inside this
+     *  test's captureException path and double-count events. Detach for the
+     *  duration of this test. */
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private List stashedRootAppenders;
+    private Object loggerCtx;
+
     @BeforeEach
+    @SuppressWarnings({"rawtypes", "unchecked"})
     void setUp() {
+        Object f = LoggerFactory.getILoggerFactory();
+        if (f instanceof ch.qos.logback.classic.LoggerContext ctx) {
+            loggerCtx = ctx;
+            ch.qos.logback.classic.Logger root = ctx.getLogger(ch.qos.logback.classic.Logger.ROOT_LOGGER_NAME);
+            stashedRootAppenders = new ArrayList();
+            Iterator it = root.iteratorForAppenders();
+            while (it.hasNext()) {
+                Object a = it.next();
+                if (a instanceof AllStakLogbackAppender) stashedRootAppenders.add(a);
+            }
+            for (Object a : stashedRootAppenders) {
+                root.detachAppender((ch.qos.logback.core.Appender) a);
+            }
+        }
+
         wireMock.resetAll();
         wireMock.stubFor(post(urlPathMatching("/ingest/v1/.*"))
                 .willReturn(aResponse().withStatus(202)
@@ -80,9 +108,16 @@ class AllStakLog4j2AppenderTest {
     }
 
     @AfterEach
+    @SuppressWarnings({"rawtypes", "unchecked"})
     void tearDown() {
-        AllStak.shutdown(); // shuts down and clears the registered client
+        AllStak.shutdown();
         client = null;
+        if (loggerCtx instanceof ch.qos.logback.classic.LoggerContext ctx && stashedRootAppenders != null) {
+            ch.qos.logback.classic.Logger root = ctx.getLogger(ch.qos.logback.classic.Logger.ROOT_LOGGER_NAME);
+            for (Object a : stashedRootAppenders) {
+                root.addAppender((ch.qos.logback.core.Appender) a);
+            }
+        }
     }
 
     private LogEvent event(String loggerName, Level level, String message, Throwable thrown) {
@@ -108,6 +143,62 @@ class AllStakLog4j2AppenderTest {
                         .withRequestBody(containing("request failed"))
                         .withRequestBody(containing("java.lang.RuntimeException: kaboom"))
                         .withRequestBody(containing("AllStakLog4j2AppenderTest"))));
+    }
+
+    @Test
+    void errorWithThrowableAlsoPromotedToCaptureException() {
+        AllStakLog4j2Appender appender = AllStakLog4j2Appender.create("allstak");
+        appender.start();
+
+        // Caught-and-logged exception: host code did `log.error(msg, ex)`.
+        // The appender must fire BOTH a log entry and an error event so the
+        // throwable surfaces in the AllStak Issues view, not just in Logs.
+        String marker = "Log4j2-promoted-marker-" + System.nanoTime();
+        IllegalStateException boom = new IllegalStateException(marker);
+        appender.append(event("com.acme.AuditWriter", Level.ERROR,
+                "ClickHouse audit write failed: action=X", boom));
+
+        await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
+            wireMock.verify(postRequestedFor(urlEqualTo("/ingest/v1/errors"))
+                    .withRequestBody(containing(marker))
+                    .withRequestBody(containing("IllegalStateException")));
+            wireMock.verify(postRequestedFor(urlEqualTo("/ingest/v1/logs"))
+                    .withRequestBody(containing(marker)));
+        });
+    }
+
+    @Test
+    void errorWithoutThrowableDoesNotHitErrorsEndpoint() {
+        AllStakLog4j2Appender appender = AllStakLog4j2Appender.create("allstak");
+        appender.start();
+
+        String marker = "Log4j2-log-only-marker-" + System.nanoTime();
+        appender.append(event("com.acme.Service", Level.ERROR, marker, null));
+
+        await().atMost(Duration.ofSeconds(5)).untilAsserted(() ->
+                wireMock.verify(postRequestedFor(urlEqualTo("/ingest/v1/logs"))
+                        .withRequestBody(containing(marker))));
+        // No error event must carry this marker — string-only log.error has no
+        // throwable to promote.
+        wireMock.verify(0, postRequestedFor(urlEqualTo("/ingest/v1/errors"))
+                .withRequestBody(containing(marker)));
+    }
+
+    @Test
+    void warnWithThrowableStaysAsLogOnly() {
+        AllStakLog4j2Appender appender = AllStakLog4j2Appender.create("allstak");
+        appender.start();
+
+        // WARN-with-throwable is intentionally NOT promoted — only ERROR+ is.
+        String marker = "Log4j2-warn-marker-" + System.nanoTime();
+        appender.append(event("com.acme.Service", Level.WARN,
+                marker, new RuntimeException("retryable")));
+
+        await().atMost(Duration.ofSeconds(5)).untilAsserted(() ->
+                wireMock.verify(postRequestedFor(urlEqualTo("/ingest/v1/logs"))
+                        .withRequestBody(containing(marker))));
+        wireMock.verify(0, postRequestedFor(urlEqualTo("/ingest/v1/errors"))
+                .withRequestBody(containing(marker)));
     }
 
     @Test

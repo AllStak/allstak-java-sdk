@@ -6,6 +6,21 @@ All notable changes to the AllStak Java SDK live here. Format follows
 
 ## [Unreleased]
 
+### Changed — log appenders auto-promote ERROR with throwable to Issues
+
+`AllStakLogbackAppender` and `AllStakLog4j2Appender` now call
+`captureException` (in addition to `captureLog`) when an event is at
+`ERROR` level and carries a real `Throwable`. Caught-and-logged
+exceptions — e.g. `log.error("op failed", ex)` inside a `try/catch`
+that doesn't rethrow — now surface in the AllStak Issues view, not
+only in Logs. This matches Sentry's appender behavior.
+
+- WARN-with-throwable still stays Log-only (anomalies, not issues).
+- Plain `log.error("msg only")` with no Throwable still stays Log-only.
+- The throwable is only promoted when the appender can recover the
+  real `Throwable` (Logback `ThrowableProxy`, Log4j2 `LogEvent.getThrown()`).
+  Cross-process/serialized throwable proxies fall back to log-only.
+
 ### Added — Phase A foundation (Sentry parity)
 
 - **Scope / Hub model** — three-layer scope stack

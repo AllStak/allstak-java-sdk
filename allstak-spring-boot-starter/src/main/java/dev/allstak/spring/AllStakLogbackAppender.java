@@ -1,17 +1,27 @@
 package dev.allstak.spring;
 
+import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.classic.spi.IThrowableProxy;
 import ch.qos.logback.classic.spi.StackTraceElementProxy;
+import ch.qos.logback.classic.spi.ThrowableProxy;
 import ch.qos.logback.core.AppenderBase;
 import dev.allstak.AllStak;
 import dev.allstak.AllStakClient;
 
+import java.util.HashMap;
 import java.util.Map;
 
 /**
  * Logback appender that sends log events to AllStak.
  * Auto-configured by AllStakAutoConfiguration.
+ *
+ * <p>Every event is forwarded as a structured log via
+ * {@link AllStakClient#captureLog}. In addition, when the event is at
+ * {@code ERROR} level <em>and</em> carries a {@link Throwable}, the throwable
+ * is also reported via {@link AllStakClient#captureException} so that errors
+ * which are caught and logged (rather than propagated) still surface in the
+ * AllStak Issues view. This mirrors the Sentry Logback appender's behavior.
  */
 public class AllStakLogbackAppender extends AppenderBase<ILoggingEvent> {
 
@@ -33,13 +43,49 @@ public class AllStakLogbackAppender extends AppenderBase<ILoggingEvent> {
         SENDING.set(true);
         try {
             String level = mapLevel(event.getLevel().toString());
-            String message = event.getFormattedMessage();
+            String formatted = event.getFormattedMessage();
 
             // Skip SDK internal debug messages
-            if (message != null && message.startsWith("[AllStak SDK")) return;
+            if (formatted != null && formatted.startsWith("[AllStak SDK")) return;
 
-            // Include stack trace in message if present
             IThrowableProxy tp = event.getThrowableProxy();
+            Map<String, String> mdc = event.getMDCPropertyMap();
+            String traceId = mdc.get("traceId");
+            if (traceId == null) {
+                var reqCtx = AllStakClient.getRequestContext();
+                if (reqCtx != null) traceId = reqCtx.getTraceId();
+            }
+            String service = mdc.get("service");
+            Map<String, Object> metadata = null;
+            if (!mdc.isEmpty()) {
+                metadata = new HashMap<>(mdc);
+                metadata.remove("traceId");
+                metadata.remove("service");
+                if (metadata.isEmpty()) metadata = null;
+            }
+
+            // Promote ERROR-with-throwable to a captureException so it lands in
+            // the Issues view, not only the Logs view. The throwable is real
+            // only when the host app called log.error(msg, ex) — Logback's
+            // ThrowableProxy wraps the live Throwable; other IThrowableProxy
+            // impls (e.g. serialized cross-process events) don't, so we fall
+            // back to log-only in that case.
+            Throwable realThrowable = null;
+            if (tp instanceof ThrowableProxy proxy && event.getLevel().isGreaterOrEqual(Level.ERROR)) {
+                realThrowable = proxy.getThrowable();
+            }
+
+            if (realThrowable != null) {
+                Map<String, Object> errMeta = metadata == null ? new HashMap<>() : new HashMap<>(metadata);
+                if (formatted != null) errMeta.put("log_message", formatted);
+                if (loggerName != null) errMeta.put("logger", loggerName);
+                if (traceId != null) errMeta.put("trace_id", traceId);
+                client.captureException(realThrowable, "error", errMeta);
+            }
+
+            // Always also send the structured log entry so the Logs view stays
+            // complete. Fold the stack trace into the message for readability.
+            String message = formatted == null ? "" : formatted;
             if (tp != null) {
                 StringBuilder sb = new StringBuilder(message);
                 sb.append("\n").append(tp.getClassName()).append(": ").append(tp.getMessage());
@@ -49,25 +95,6 @@ public class AllStakLogbackAppender extends AppenderBase<ILoggingEvent> {
                 }
                 message = sb.toString();
             }
-
-            // Get trace_id from MDC
-            String traceId = event.getMDCPropertyMap().get("traceId");
-            if (traceId == null) {
-                var reqCtx = AllStakClient.getRequestContext();
-                if (reqCtx != null) traceId = reqCtx.getTraceId();
-            }
-
-            // Get service from MDC or config
-            String service = event.getMDCPropertyMap().get("service");
-
-            Map<String, Object> metadata = null;
-            if (!event.getMDCPropertyMap().isEmpty()) {
-                metadata = new java.util.HashMap<>(event.getMDCPropertyMap());
-                metadata.remove("traceId"); // already a top-level field
-                metadata.remove("service");
-                if (metadata.isEmpty()) metadata = null;
-            }
-
             client.captureLog(level, message, service, traceId, null, null, null, null, null, metadata);
         } catch (Exception e) {
             // Never break the app

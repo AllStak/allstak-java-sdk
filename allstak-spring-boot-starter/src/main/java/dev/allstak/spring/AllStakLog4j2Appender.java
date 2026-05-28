@@ -103,23 +103,12 @@ public final class AllStakLog4j2Appender extends AbstractAppender {
         SENDING.set(true);
         try {
             String level = mapLevel(eventLevel);
-            String message = event.getMessage() != null ? event.getMessage().getFormattedMessage() : "";
+            String formatted = event.getMessage() != null ? event.getMessage().getFormattedMessage() : "";
 
             // Skip SDK internal debug messages.
-            if (message != null && message.startsWith("[AllStak SDK")) return;
+            if (formatted != null && formatted.startsWith("[AllStak SDK")) return;
 
-            // Fold the throwable + stack into the message, mirroring the Logback appender.
             Throwable thrown = event.getThrown();
-            if (thrown != null) {
-                StringBuilder sb = new StringBuilder(message);
-                sb.append("\n").append(thrown.getClass().getName())
-                  .append(": ").append(thrown.getMessage());
-                for (StackTraceElement step : thrown.getStackTrace()) {
-                    sb.append("\n  at ").append(step.toString());
-                    if (sb.length() > 4000) break;
-                }
-                message = sb.toString();
-            }
 
             Map<String, String> contextData = event.getContextData() != null
                     ? event.getContextData().toMap()
@@ -142,6 +131,31 @@ public final class AllStakLog4j2Appender extends AbstractAppender {
                 metadata.remove("traceId"); // already a top-level field
                 metadata.remove("service");
                 if (metadata.isEmpty()) metadata = null;
+            }
+
+            // Promote ERROR-with-throwable to a captureException so caught-and-
+            // logged exceptions still surface in the Issues view. Mirrors the
+            // Logback appender and Sentry's behavior.
+            if (thrown != null && eventLevel.isMoreSpecificThan(Level.ERROR)) {
+                Map<String, Object> errMeta = metadata == null ? new java.util.HashMap<>() : new java.util.HashMap<>(metadata);
+                if (formatted != null) errMeta.put("log_message", formatted);
+                String loggerNameForMeta = event.getLoggerName();
+                if (loggerNameForMeta != null) errMeta.put("logger", loggerNameForMeta);
+                if (traceId != null) errMeta.put("trace_id", traceId);
+                client.captureException(thrown, "error", errMeta);
+            }
+
+            // Fold the throwable + stack into the log message for readability.
+            String message = formatted == null ? "" : formatted;
+            if (thrown != null) {
+                StringBuilder sb = new StringBuilder(message);
+                sb.append("\n").append(thrown.getClass().getName())
+                  .append(": ").append(thrown.getMessage());
+                for (StackTraceElement step : thrown.getStackTrace()) {
+                    sb.append("\n  at ").append(step.toString());
+                    if (sb.length() > 4000) break;
+                }
+                message = sb.toString();
             }
 
             client.captureLog(level, message, service, traceId, null, null, null, null, null, metadata);
