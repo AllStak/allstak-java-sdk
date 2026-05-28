@@ -6,6 +6,8 @@ All notable changes to the AllStak Java SDK live here. Format follows
 
 ## [Unreleased]
 
+## [0.2.1] — 2026-05-29
+
 ### Changed — log appenders auto-promote ERROR with throwable to Issues
 
 `AllStakLogbackAppender` and `AllStakLog4j2Appender` now call
@@ -20,6 +22,8 @@ only in Logs. This matches Sentry's appender behavior.
 - The throwable is only promoted when the appender can recover the
   real `Throwable` (Logback `ThrowableProxy`, Log4j2 `LogEvent.getThrown()`).
   Cross-process/serialized throwable proxies fall back to log-only.
+
+## [0.2.0] — 2026-05-28
 
 ### Added — Phase A foundation (Sentry parity)
 
