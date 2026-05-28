@@ -117,11 +117,14 @@ class SessionTrackerTest {
     }
 
     @Test
-    void noRelease_skipsNetwork_butInMemoryStillWorks() {
+    void noRelease_stillSends_fallingBackToSdkVersion() {
+        // Release-health sessions are NEVER sampled: when no release is
+        // resolved the start envelope falls back to the SDK version so the
+        // session is still attributable rather than dropped.
         AllStakConfig noRelease = AllStakConfig.builder()
                 .apiKey("ask_live_test")
                 .environment("test")
-                .autoDetectRelease(false)   // suppress git-describe and SDK_VERSION fallback
+                .autoDetectRelease(false)   // suppress git-describe and SDK_VERSION release resolution
                 .build();
         SessionTracker tracker = new SessionTracker(noRelease, transport);
         Session s = tracker.start();
@@ -130,7 +133,68 @@ class SessionTrackerTest {
 
         assertThat(s.getStatus()).isEqualTo(SessionStatus.ERRORED);
         assertThat(s.getErrorCount()).isEqualTo(1);
+        await().atMost(Duration.ofSeconds(2)).untilAsserted(() ->
+                wireMock.verify(1, postRequestedFor(urlEqualTo("/ingest/v1/sessions/start"))
+                        .withRequestBody(matchingJsonPath(
+                                "$[?(@.release == '" + AllStakConfig.SDK_VERSION + "')]"))));
+        wireMock.verify(1, postRequestedFor(urlEqualTo("/ingest/v1/sessions/end")));
+    }
+
+    @Test
+    void transportDisabled_skipsNetwork_butInMemoryStillWorks() {
+        // A transport disabled after a 401 keeps the in-memory tracker alive
+        // for status transitions but performs no further network I/O.
+        wireMock.resetAll();
+        wireMock.stubFor(post(urlPathMatching("/ingest/v1/.*"))
+                .willReturn(aResponse().withStatus(401)));
+        // Trip the disabled flag with one send, then assert no session traffic.
+        transport.send("/ingest/v1/errors", java.util.Map.of("k", "v"));
+        assertThat(transport.isDisabled()).isTrue();
+        wireMock.resetAll();
+
+        SessionTracker tracker = new SessionTracker(config, transport);
+        Session s = tracker.start();
+        tracker.recordError();
+        tracker.end(null);
+
+        assertThat(s.getStatus()).isEqualTo(SessionStatus.ERRORED);
+        assertThat(s.getErrorCount()).isEqualTo(1);
         wireMock.verify(0, postRequestedFor(urlPathMatching("/ingest/v1/sessions/.*")));
+    }
+
+    @Test
+    void start_attachesUserId_whenProvided() {
+        SessionTracker tracker = new SessionTracker(config, transport);
+        tracker.start("user-42");
+
+        await().atMost(Duration.ofSeconds(2)).untilAsserted(() ->
+                wireMock.verify(1, postRequestedFor(urlEqualTo("/ingest/v1/sessions/start"))
+                        .withRequestBody(matchingJsonPath("$[?(@.userId == 'user-42')]"))));
+    }
+
+    @Test
+    void currentSessionId_isStableAcrossCaptures_thenNullAfterEnd() {
+        SessionTracker tracker = new SessionTracker(config, transport);
+        Session s = tracker.start();
+
+        assertThat(tracker.currentSessionId()).isEqualTo(s.getId());
+        // stable across repeated reads (mirrors per-error event stamping)
+        assertThat(tracker.currentSessionId()).isEqualTo(s.getId());
+
+        tracker.end(null);
+        assertThat(tracker.currentSessionId()).isNull();
+    }
+
+    @Test
+    void end_carriesDurationMs() {
+        SessionTracker tracker = new SessionTracker(config, transport);
+        tracker.start();
+        tracker.end(null);
+
+        await().atMost(Duration.ofSeconds(2)).untilAsserted(() ->
+                wireMock.verify(1, postRequestedFor(urlEqualTo("/ingest/v1/sessions/end"))
+                        .withRequestBody(matchingJsonPath("$.durationMs"))
+                        .withRequestBody(matchingJsonPath("$.sessionId"))));
     }
 
     @Test

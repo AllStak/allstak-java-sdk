@@ -141,7 +141,7 @@ public final class AllStakClient {
         // unit tests don't hit /ingest/v1/sessions/start.
         if (config.isEnableAutoSessionTracking() && !isLikelyTestRuntime()) {
             this.sessionTracker = new SessionTracker(config, transport);
-            this.sessionTracker.start();
+            this.sessionTracker.start(initialUserId());
         } else {
             this.sessionTracker = null;
         }
@@ -178,6 +178,21 @@ public final class AllStakClient {
         }, "allstak-release-registration");
         thread.setDaemon(true);
         thread.start();
+    }
+
+    /**
+     * The user id to stamp on the {@code /sessions/start} envelope, if a user
+     * was set before {@code init}. Scope user wins over the legacy client-level
+     * user. Fail-open: returns {@code null} on any error so init never breaks.
+     */
+    private String initialUserId() {
+        try {
+            UserContext user = Scopes.mergedForCapture().user();
+            if (user == null) user = currentUser;
+            return user != null ? user.getId() : null;
+        } catch (Throwable t) {
+            return null;
+        }
     }
 
     private static boolean isLikelyTestRuntime() {
@@ -282,6 +297,11 @@ public final class AllStakClient {
                         null, inApp, "java", null));
             }
 
+            // Release-health: attach the active session id so the backend's
+            // error consumer can mark this session errored/crashed server-side.
+            // Null when auto session tracking is disabled or no session is open.
+            String sessionId = sessionTracker != null ? sessionTracker.currentSessionId() : null;
+
             ErrorEvent event = new ErrorEvent(
                     exceptionClass,
                     message,
@@ -289,7 +309,7 @@ public final class AllStakClient {
                     level != null ? level : (scope.level() != null ? scope.level() : "error"),
                     config.getEnvironment(),
                     config.getRelease(),
-                    null, // sessionId — not applicable for server SDK
+                    sessionId,
                     user,
                     mergedMetaErr,
                     traceId,
