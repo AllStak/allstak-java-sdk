@@ -705,10 +705,51 @@ public final class AllStakClient {
                             String operation, String description, String status,
                             long durationMs, long startTimeMillis, long endTimeMillis,
                             String service, String environment, Map<String, String> tags) {
+        captureSpan(traceId, spanId, parentSpanId, operation, description, status,
+                durationMs, startTimeMillis, endTimeMillis, service, environment, tags, null);
+    }
+
+    /**
+     * Span capture with an optional free-form {@code data} bag (Sentry-style
+     * span data — arbitrary key/value context such as {@code db.system},
+     * {@code http.status_code}). The legacy 12-arg overload keeps the
+     * historical {@code data:""} wire shape so existing integrations and
+     * their tests are unaffected; this overload emits {@code data} as a JSON
+     * object only when non-empty. Honors the same {@code tracesSampleRate}
+     * span-drop gate. Fail-open.
+     */
+    public void captureSpan(String traceId, String spanId, String parentSpanId,
+                            String operation, String description, String status,
+                            long durationMs, long startTimeMillis, long endTimeMillis,
+                            String service, String environment, Map<String, String> tags,
+                            Map<String, Object> data) {
+        captureSpan(traceId, spanId, parentSpanId, operation, description, status,
+                durationMs, startTimeMillis, endTimeMillis, service, environment, tags, data, false);
+    }
+
+    /**
+     * Span capture where the caller has <b>already</b> made the sampling
+     * decision ({@code preSampled=true} skips the internal
+     * {@code tracesSampleRate} re-roll). The first-class
+     * {@link dev.allstak.tracing.Transaction}/{@link dev.allstak.tracing.Span}
+     * API uses this: the transaction decides once at start (via
+     * {@link #isSpanSampled(dev.allstak.tracing.SamplingContext)}), children
+     * inherit it, and only sampled spans ever reach {@code finish()} →
+     * {@code captureSpan}. Re-rolling here would double-sample and could drop a
+     * span the transaction already kept (or vice-versa). Auto-instrumentation
+     * that has no transaction context keeps {@code preSampled=false} and lets
+     * this method apply the gate.
+     */
+    public void captureSpan(String traceId, String spanId, String parentSpanId,
+                            String operation, String description, String status,
+                            long durationMs, long startTimeMillis, long endTimeMillis,
+                            String service, String environment, Map<String, String> tags,
+                            Map<String, Object> data, boolean preSampled) {
         if (shutdown.get() || transport.isDisabled()) return;
         // Span sampling — when tracesSampleRate is configured, drop unsampled
-        // spans. Null keeps the legacy always-on behavior.
-        if (!isSpanSampled()) {
+        // spans. Null keeps the legacy always-on behavior. Skipped when the
+        // caller already made the decision (manual transaction/span tree).
+        if (!preSampled && !isSpanSampled()) {
             SdkLogger.debug("Span dropped by tracesSampleRate={}", config.getTracesSampleRate());
             return;
         }
@@ -727,7 +768,15 @@ public final class AllStakClient {
             span.put("environment", environment != null ? environment : config.getEnvironment());
             span.put("release", config.getRelease() != null ? config.getRelease() : "");
             span.put("tags", tags != null ? tags : Map.of());
-            span.put("data", "");
+            // Scrub PII from data values before they go on the wire, then emit
+            // as a JSON object when present — otherwise keep the historical
+            // empty-string default so the wire shape is unchanged for callers
+            // that don't supply data.
+            if (data != null && !data.isEmpty()) {
+                span.put("data", DataMasker.maskMetadata(data, config.isSendDefaultPii()));
+            } else {
+                span.put("data", "");
+            }
 
             Map<String, Object> payload = Map.of("spans", List.of(span));
             sendOrSpool(PATH_SPANS, payload);
@@ -784,6 +833,15 @@ public final class AllStakClient {
     public AllStakConfig getConfig() { return config; }
     public HttpTransport getTransport() { return transport; }
     public boolean isShutdown() { return shutdown.get(); }
+
+    /**
+     * The id of the active release-health session, or {@code null} when auto
+     * session tracking is disabled or no session is open. Exposed so the
+     * tracing API can correlate a transaction tree with its session.
+     */
+    public String currentSessionId() {
+        return sessionTracker != null ? sessionTracker.currentSessionId() : null;
+    }
 
     // =========================================================================
     // Internal

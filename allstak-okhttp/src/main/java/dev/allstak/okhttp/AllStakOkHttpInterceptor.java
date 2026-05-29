@@ -47,7 +47,14 @@ public final class AllStakOkHttpInterceptor implements Interceptor {
         String url = request.url().toString();
         String method = request.method();
         String host = request.url().host();
-        String traceId = newTraceId();
+        // Attach to the in-flight transaction/span when one is active on this
+        // thread so the HTTP call nests under it (shared trace id, this call's
+        // span pointing at the active span as its parent). Falls back to a
+        // fresh root trace when no transaction is open — preserving the
+        // pre-tracing-API behavior exactly.
+        dev.allstak.tracing.Span currentSpan = AllStak.getCurrentSpan();
+        String traceId = currentSpan != null ? currentSpan.getTraceId() : newTraceId();
+        String parentSpanId = currentSpan != null ? currentSpan.getSpanId() : null;
         String spanId = newSpanId();
 
         // Inject trace headers only when (a) client initialised AND (b) the
@@ -90,7 +97,7 @@ public final class AllStakOkHttpInterceptor implements Interceptor {
             if (client != null) {
                 try {
                     client.captureSpan(
-                            traceId, spanId, null,
+                            traceId, spanId, parentSpanId,
                             "http.client",
                             method + " " + url,
                             failure == null && status > 0 && status < 400 ? "ok" : "error",

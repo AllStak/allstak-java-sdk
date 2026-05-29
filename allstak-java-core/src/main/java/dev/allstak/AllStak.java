@@ -6,6 +6,10 @@ import dev.allstak.model.JobHandle;
 import dev.allstak.model.UserContext;
 import dev.allstak.scope.Scope;
 import dev.allstak.scope.Scopes;
+import dev.allstak.tracing.SamplingContext;
+import dev.allstak.tracing.Span;
+import dev.allstak.tracing.SpanScope;
+import dev.allstak.tracing.Transaction;
 
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
@@ -145,6 +149,50 @@ public final class AllStak {
     }
 
     // =========================================================================
+    // Distributed Tracing — transactions & spans
+    //
+    // First-class manual tracing API mirroring Sentry's ITransaction/ISpan.
+    // startTransaction opens a root span (one sampling decision, inherited by
+    // every child); startChild on the returned handle nests spans. On finish()
+    // each sampled span is emitted to /ingest/v1/spans with correct
+    // trace/span/parent ids, durations, and release/env/session context, reusing
+    // the existing tracesSampleRate/TracesSampler gate. While a span is open it
+    // is the discoverable {@link #getCurrentSpan() current span} so interceptors
+    // and captureException can attach to it.
+    // =========================================================================
+
+    /**
+     * Start a new tracing transaction (root span). Always returns a usable
+     * handle — before {@code init} (or when unsampled) the handle is a no-op,
+     * so callers never null-check. Pair with {@link Transaction#finish()},
+     * ideally in a {@code finally}.
+     *
+     * @param name human-readable transaction name (e.g. {@code "POST /api/orders"})
+     * @param op   operation category (e.g. {@code "http.server"}, {@code "task"})
+     */
+    public static Transaction startTransaction(String name, String op) {
+        return Transaction.start(CLIENT.get(), name, op);
+    }
+
+    /**
+     * Start a transaction with extra {@link SamplingContext} inputs (incoming
+     * parent-sampled bit, method, url) so a configured {@code tracesSampler}
+     * can make a route-aware sampling decision.
+     */
+    public static Transaction startTransaction(String name, String op, SamplingContext samplingContext) {
+        return Transaction.start(CLIENT.get(), name, op, samplingContext);
+    }
+
+    /**
+     * The innermost active span on the current thread, or {@code null} when no
+     * transaction is in flight. Auto-instrumentation and {@code captureException}
+     * can read this to attach to the in-flight trace.
+     */
+    public static Span getCurrentSpan() {
+        return SpanScope.current();
+    }
+
+    // =========================================================================
     // Breadcrumbs
     // =========================================================================
 
@@ -279,5 +327,6 @@ public final class AllStak {
             c.shutdown();
         }
         Scopes.clear();
+        SpanScope.clear();
     }
 }
