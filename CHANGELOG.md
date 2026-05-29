@@ -30,7 +30,7 @@ All notable changes to the AllStak Java SDK live here. Format follows
 
 - **Value-based data scrubbing** layered on top of the existing
   key-name redaction in `DataMasker`, gated by `sendDefaultPii`
-  (default `false` = Sentry parity):
+  (default `false` = ):
   - Always scrubbed: credit-card numbers (13–19 digits, Luhn + card-IIN
     double gate to avoid false positives on order ids / timestamps) and
     hyphenated US SSNs.
@@ -45,11 +45,11 @@ All notable changes to the AllStak Java SDK live here. Format follows
 
 ### Added — first-class transaction / span API
 
-- **Manual tracing API** (sentry-java parity): `AllStak.startTransaction(name, op)`
+- **Manual tracing API** (AllStak SDK parity): `AllStak.startTransaction(name, op)`
   returns a `Transaction` (root span); `startChild(op, description)` nests
   spans sharing the trace id with correct parent-span linkage.
 - `Span` supports `setTag` / `setData` / `setStatus` / `setDescription` /
-  `finish`; new `SpanStatus` enum with Sentry-style values and
+  `finish`; new `SpanStatus` enum with standard span status values and
   `fromHttpStatus()` mapping.
 - Sampling is decided once at transaction start (reusing
   `tracesSampler` / `tracesSampleRate` / parent-sampled bit) and
@@ -77,7 +77,7 @@ All notable changes to the AllStak Java SDK live here. Format follows
 `ERROR` level and carries a real `Throwable`. Caught-and-logged
 exceptions — e.g. `log.error("op failed", ex)` inside a `try/catch`
 that doesn't rethrow — now surface in the AllStak Issues view, not
-only in Logs. This matches Sentry's appender behavior.
+only in Logs. This matches standard observability appender behavior.
 
 - WARN-with-throwable still stays Log-only (anomalies, not issues).
 - Plain `log.error("msg only")` with no Throwable still stays Log-only.
@@ -87,7 +87,7 @@ only in Logs. This matches Sentry's appender behavior.
 
 ## [0.2.0] — 2026-05-28
 
-### Added — Phase A foundation (Sentry parity)
+### Added — Phase A foundation ()
 
 - **Scope / Hub model** — three-layer scope stack
   (`Scopes.global()`, `Scopes.isolation()`, `Scopes.current()`) with
