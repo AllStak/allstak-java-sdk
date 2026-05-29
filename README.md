@@ -11,7 +11,7 @@ release-health sessions, and continuous JVM profiles.
 <dependency>
   <groupId>sa.allstak</groupId>
   <artifactId>allstak-spring-boot-starter</artifactId>
-  <version>0.2.1</version>
+  <version>0.3.0</version>
 </dependency>
 ```
 
@@ -58,7 +58,7 @@ by default when its library is present.
 <dependency>
   <groupId>sa.allstak</groupId>
   <artifactId>allstak-java-core</artifactId>
-  <version>0.2.1</version>
+  <version>0.3.0</version>
 </dependency>
 ```
 

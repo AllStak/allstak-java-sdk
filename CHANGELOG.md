@@ -6,6 +6,8 @@ All notable changes to the AllStak Java SDK live here. Format follows
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-05-29
+
 ### Added — release-health session tracking
 
 - **Crash-free session tracking** — `SessionTracker` now records
