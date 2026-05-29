@@ -1,5 +1,17 @@
+# Maven build output
 target/
 *.class
 **/surefire-reports/
+**/*.jar
+**/*.war
+
+# IDE / editor
 .idea/
 *.iml
+.vscode/
+.settings/
+.classpath
+.project
+
+# OS cruft
+.DS_Store

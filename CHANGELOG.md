@@ -6,6 +6,66 @@ All notable changes to the AllStak Java SDK live here. Format follows
 
 ## [Unreleased]
 
+### Added — release-health session tracking
+
+- **Crash-free session tracking** — `SessionTracker` now records
+  session start/end with errored/crashed/exited transitions and feeds
+  the crash-free rate. Sessions post to `/ingest/v1/sessions/start` and
+  `/sessions/end`. Wired through `AllStakClient` lifecycle (init →
+  shutdown).
+
+### Added — offline / persistent transport queue
+
+- **Disk-backed event spool** — `dev.allstak.spool.EventSpool` /
+  `SpoolEntry` persist undelivered events to disk so they survive a JVM
+  restart or a backend outage and replay when transport recovers.
+- `HttpTransport` now reports a structured `SendResult` (success /
+  retryable / dropped) so the client can decide whether to spool, retry,
+  or discard. New `AllStakConfig` knobs control the offline queue
+  (enablement, spool directory, capacity).
+
+### Added — value-pattern PII scrubbing
+
+- **Value-based data scrubbing** layered on top of the existing
+  key-name redaction in `DataMasker`, gated by `sendDefaultPii`
+  (default `false` = Sentry parity):
+  - Always scrubbed: credit-card numbers (13–19 digits, Luhn + card-IIN
+    double gate to avoid false positives on order ids / timestamps) and
+    hyphenated US SSNs.
+  - Scrubbed unless `sendDefaultPii=true`: email addresses and
+    octet-validated IPv4 literals.
+- Applied to string values on the wire path only (error/log messages,
+  metadata/extra/contexts recursively, breadcrumb message + data,
+  captured HTTP bodies). Explicit `setUser` fields, stack-frame
+  metadata, release/sdk fields, URLs, span names, and the session id are
+  not scrubbed. Fail-open throughout; regexes compiled once with capped
+  scan length and recursion depth.
+
+### Added — first-class transaction / span API
+
+- **Manual tracing API** (sentry-java parity): `AllStak.startTransaction(name, op)`
+  returns a `Transaction` (root span); `startChild(op, description)` nests
+  spans sharing the trace id with correct parent-span linkage.
+- `Span` supports `setTag` / `setData` / `setStatus` / `setDescription` /
+  `finish`; new `SpanStatus` enum with Sentry-style values and
+  `fromHttpStatus()` mapping.
+- Sampling is decided once at transaction start (reusing
+  `tracesSampler` / `tracesSampleRate` / parent-sampled bit) and
+  inherited by every child. Finished sampled spans emit to
+  `/ingest/v1/spans` with durations and release/env/session context.
+- `SpanScope` thread-local exposes the active span
+  (`AllStak.getCurrentSpan`); the `allstak-okhttp` interceptor now nests
+  under the in-flight transaction when one exists, falling back to a
+  fresh root trace otherwise.
+
+### Housekeeping
+
+- Stopped tracking Maven `target/` build output that had been committed
+  since the initial commit (`*.class`, surefire reports, compiler-status
+  lists, copied resources) — these were already listed in `.gitignore`
+  but remained in the index. Expanded `.gitignore` (jars/wars, IDE
+  metadata, `.DS_Store`). No source files touched.
+
 ## [0.2.1] — 2026-05-29
 
 ### Changed — log appenders auto-promote ERROR with throwable to Issues
