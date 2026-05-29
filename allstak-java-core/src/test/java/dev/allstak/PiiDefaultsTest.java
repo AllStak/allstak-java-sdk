@@ -107,4 +107,66 @@ class PiiDefaultsTest {
             AllStak.reset();
         }
     }
+
+    @Test
+    void default_scrubsPiiPatternsLeakedIntoExceptionMessage() {
+        AllStakClient c = client(false);
+        try {
+            AllStak.init(c);
+            // Free-text message leaking an email, an IPv4, a Luhn-valid card,
+            // and a hyphenated SSN. All four must be redacted by default.
+            c.captureException(new RuntimeException(
+                    "failed for bob@corp.io from 203.0.113.5 card 4242 4242 4242 4242 ssn 123-45-6789"));
+
+            await().atMost(Duration.ofSeconds(2)).untilAsserted(() ->
+                    wireMock.verify(1, postRequestedFor(urlEqualTo("/ingest/v1/errors"))
+                            .withRequestBody(notContaining("bob@corp.io"))
+                            .withRequestBody(notContaining("203.0.113.5"))
+                            .withRequestBody(notContaining("4242 4242 4242 4242"))
+                            .withRequestBody(notContaining("123-45-6789"))
+                            .withRequestBody(containing("[REDACTED]"))));
+        } finally {
+            AllStak.reset();
+        }
+    }
+
+    @Test
+    void sendDefaultPii_true_keepsEmailAndIpInMessage_butStillScrubsCardAndSsn() {
+        AllStakClient c = client(true);
+        try {
+            AllStak.init(c);
+            c.captureException(new RuntimeException(
+                    "ok bob@corp.io from 203.0.113.5 card 4242 4242 4242 4242 ssn 123-45-6789"));
+
+            await().atMost(Duration.ofSeconds(2)).untilAsserted(() ->
+                    wireMock.verify(1, postRequestedFor(urlEqualTo("/ingest/v1/errors"))
+                            // (B) disabled when opted in: email + ip survive.
+                            .withRequestBody(containing("bob@corp.io"))
+                            .withRequestBody(containing("203.0.113.5"))
+                            // (A) always on: card + ssn still redacted.
+                            .withRequestBody(notContaining("4242 4242 4242 4242"))
+                            .withRequestBody(notContaining("123-45-6789"))));
+        } finally {
+            AllStak.reset();
+        }
+    }
+
+    @Test
+    void explicitSetUserEmail_isNotScrubbedByValueScrubbers_whenOptedIn() {
+        // With sendDefaultPii=true the explicit user object ships verbatim:
+        // value-pattern scrubbing must never touch the intentional user.email.
+        AllStakClient c = client(true);
+        try {
+            AllStak.init(c);
+            AllStak.setUser(UserContext.of("user-9", "intentional@corp.io", "198.51.100.7"));
+            c.captureException(new RuntimeException("boom"));
+
+            await().atMost(Duration.ofSeconds(2)).untilAsserted(() ->
+                    wireMock.verify(1, postRequestedFor(urlEqualTo("/ingest/v1/errors"))
+                            .withRequestBody(containing("\"email\":\"intentional@corp.io\""))
+                            .withRequestBody(containing("\"ip\":\"198.51.100.7\""))));
+        } finally {
+            AllStak.reset();
+        }
+    }
 }

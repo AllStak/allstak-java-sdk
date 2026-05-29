@@ -125,13 +125,13 @@ public class AllStakServletFilter extends OncePerRequestFilter {
                         ? captureBody(requestWrapper.getContentAsByteArray(),
                                 requestWrapper.getContentType(),
                                 requestWrapper.getCharacterEncoding(),
-                                "request")
+                                "request", true)
                         : new BodyCapture(null, "disabled", "sendDefaultPii=false");
                 BodyCapture responseBody = capturesBody
                         ? captureBody(responseWrapper.getContentAsByteArray(),
                                 responseWrapper.getContentType(),
                                 responseWrapper.getCharacterEncoding(),
-                                "response")
+                                "response", true)
                         : new BodyCapture(null, "disabled", "sendDefaultPii=false");
 
                 HttpRequestItem item = HttpRequestItem.builder()
@@ -209,7 +209,8 @@ public class AllStakServletFilter extends OncePerRequestFilter {
         return path.startsWith("/actuator") || path.equals("/health");
     }
 
-    private static BodyCapture captureBody(byte[] bytes, String contentType, String encoding, String direction) {
+    private static BodyCapture captureBody(byte[] bytes, String contentType, String encoding,
+                                           String direction, boolean sendDefaultPii) {
         if (bytes == null || bytes.length == 0) {
             return new BodyCapture(null, "disabled", direction + " body is empty.");
         }
@@ -223,7 +224,9 @@ public class AllStakServletFilter extends OncePerRequestFilter {
             body = body.substring(0, MAX_BODY_CHARS);
         }
 
-        String masked = DataMasker.maskBody(body, contentType);
+        // Bodies are only captured when sendDefaultPii=true, so the email/IPv4
+        // (B) scrubbers stay off (caller opted in); credit-card/SSN (A) still run.
+        String masked = DataMasker.maskBody(body, contentType, sendDefaultPii);
         boolean redacted = !body.equals(masked);
         if (truncated) {
             return new BodyCapture(masked, "truncated", direction + " body captured and truncated.");

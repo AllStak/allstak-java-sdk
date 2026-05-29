@@ -442,8 +442,8 @@ public final class AllStakClient {
                 return;
             }
 
-            // 3. masking — scrub PII from metadata after beforeSend ran.
-            ErrorEvent masked = withMaskedMetadata(processed);
+            // 3. masking — scrub PII from message + metadata after beforeSend ran.
+            ErrorEvent masked = withMaskedMetadata(processed, config.isSendDefaultPii());
 
             // 4. transport — errors are sent immediately, no buffering. If the
             // send is un-deliverable (offline / retries exhausted) the masked
@@ -522,8 +522,8 @@ public final class AllStakClient {
                 return;
             }
 
-            // 3. masking — scrub PII from metadata after beforeSend ran.
-            LogEvent masked = withMaskedMetadata(processed);
+            // 3. masking — scrub PII from message + metadata after beforeSend ran.
+            LogEvent masked = withMaskedMetadata(processed, config.isSendDefaultPii());
 
             // 4. transport — buffered, flushed on timer/capacity.
             logBuffer.add(masked);
@@ -927,22 +927,118 @@ public final class AllStakClient {
         }
     }
 
-    private static ErrorEvent withMaskedMetadata(ErrorEvent e) {
-        if (e.getMetadata() == null) return e;
-        Map<String, Object> masked = DataMasker.maskMetadata(e.getMetadata());
-        return new ErrorEvent(
-                e.getExceptionClass(), e.getMessage(), e.getStackTrace(), e.getLevel(),
-                e.getEnvironment(), e.getRelease(), e.getSessionId(), e.getUser(),
-                masked, e.getTraceId(), e.getRequestContext(), e.getBreadcrumbs(),
-                e.getPlatform(), e.getSdkName(), e.getSdkVersion(), e.getDist(), e.getFrames());
+    /**
+     * Scrub PII from the error event: key-redaction + value-pattern scrubbing
+     * on metadata values, and value-pattern scrubbing on the exception message
+     * (the most common free-text PII leak). Stack frames, release/sdk fields,
+     * the explicit user object, and request URLs/paths are intentionally left
+     * untouched. Fail-open: returns the event with at most key-redaction on any
+     * scrubber error so an event is never dropped here.
+     */
+    private static ErrorEvent withMaskedMetadata(ErrorEvent e, boolean sendDefaultPii) {
+        try {
+            Map<String, Object> masked = e.getMetadata() == null
+                    ? null
+                    : DataMasker.maskMetadata(e.getMetadata(), sendDefaultPii);
+            String maskedMessage = DataMasker.scrubValue(e.getMessage(), sendDefaultPii);
+            // The legacy v1 stackTrace string list echoes the exception message
+            // in its header lines; scrub those the same way as the message.
+            // Frame lines ("at class.method(File:line)") never match a PII
+            // pattern, and the structured Frame objects (filename/function/
+            // absPath) are intentionally left untouched.
+            List<String> maskedStack = maskStackTrace(e.getStackTrace(), sendDefaultPii);
+            List<Breadcrumb> maskedCrumbs = maskBreadcrumbs(e.getBreadcrumbs(), sendDefaultPii);
+            if (masked == e.getMetadata()
+                    && java.util.Objects.equals(maskedMessage, e.getMessage())
+                    && maskedStack == e.getStackTrace()
+                    && maskedCrumbs == e.getBreadcrumbs()) {
+                return e;
+            }
+            return new ErrorEvent(
+                    e.getExceptionClass(), maskedMessage, maskedStack, e.getLevel(),
+                    e.getEnvironment(), e.getRelease(), e.getSessionId(), e.getUser(),
+                    masked, e.getTraceId(), e.getRequestContext(), maskedCrumbs,
+                    e.getPlatform(), e.getSdkName(), e.getSdkVersion(), e.getDist(), e.getFrames());
+        } catch (Throwable t) {
+            SdkLogger.debug("Value scrubbing failed for error — key-redaction only: {}", t.getMessage());
+            if (e.getMetadata() == null) return e;
+            return new ErrorEvent(
+                    e.getExceptionClass(), e.getMessage(), e.getStackTrace(), e.getLevel(),
+                    e.getEnvironment(), e.getRelease(), e.getSessionId(), e.getUser(),
+                    DataMasker.maskMetadata(e.getMetadata()), e.getTraceId(), e.getRequestContext(),
+                    e.getBreadcrumbs(), e.getPlatform(), e.getSdkName(), e.getSdkVersion(),
+                    e.getDist(), e.getFrames());
+        }
     }
 
-    private static LogEvent withMaskedMetadata(LogEvent e) {
-        if (e.getMetadata() == null) return e;
-        Map<String, Object> masked = DataMasker.maskMetadata(e.getMetadata());
-        return new LogEvent(e.getLevel(), e.getMessage(), e.getService(), e.getTraceId(),
-                e.getEnvironment(), e.getSpanId(), e.getRequestId(), e.getUserId(),
-                e.getErrorId(), masked, e.getRelease());
+    private static LogEvent withMaskedMetadata(LogEvent e, boolean sendDefaultPii) {
+        try {
+            Map<String, Object> masked = e.getMetadata() == null
+                    ? null
+                    : DataMasker.maskMetadata(e.getMetadata(), sendDefaultPii);
+            String maskedMessage = DataMasker.scrubValue(e.getMessage(), sendDefaultPii);
+            if (masked == e.getMetadata() && java.util.Objects.equals(maskedMessage, e.getMessage())) {
+                return e;
+            }
+            return new LogEvent(e.getLevel(), maskedMessage, e.getService(), e.getTraceId(),
+                    e.getEnvironment(), e.getSpanId(), e.getRequestId(), e.getUserId(),
+                    e.getErrorId(), masked, e.getRelease());
+        } catch (Throwable t) {
+            SdkLogger.debug("Value scrubbing failed for log — key-redaction only: {}", t.getMessage());
+            if (e.getMetadata() == null) return e;
+            return new LogEvent(e.getLevel(), e.getMessage(), e.getService(), e.getTraceId(),
+                    e.getEnvironment(), e.getSpanId(), e.getRequestId(), e.getUserId(),
+                    e.getErrorId(), DataMasker.maskMetadata(e.getMetadata()), e.getRelease());
+        }
+    }
+
+    /**
+     * Scrub PII from the v1 stackTrace string list. Each entry is run through
+     * the value scrubbers: exception-header lines carry the same free-text
+     * message we already scrub, while {@code "at class.method(File:line)"}
+     * frame lines never match a PII pattern and so pass through unchanged.
+     * Returns the same list instance when nothing changed.
+     */
+    private static List<String> maskStackTrace(List<String> stack, boolean sendDefaultPii) {
+        if (stack == null || stack.isEmpty()) return stack;
+        List<String> out = null;
+        for (int i = 0; i < stack.size(); i++) {
+            String line = stack.get(i);
+            String scrubbed = DataMasker.scrubValue(line, sendDefaultPii);
+            if (!java.util.Objects.equals(scrubbed, line) && out == null) {
+                out = new java.util.ArrayList<>(stack.subList(0, i));
+            }
+            if (out != null) out.add(scrubbed);
+        }
+        return out != null ? out : stack;
+    }
+
+    /**
+     * Scrub PII from breadcrumb message + data while preserving type/category/
+     * level/timestamp. Returns the same list instance when nothing changed so
+     * callers can cheaply detect a no-op.
+     */
+    private static List<Breadcrumb> maskBreadcrumbs(List<Breadcrumb> crumbs, boolean sendDefaultPii) {
+        if (crumbs == null || crumbs.isEmpty()) return crumbs;
+        List<Breadcrumb> out = null;
+        for (int i = 0; i < crumbs.size(); i++) {
+            Breadcrumb b = crumbs.get(i);
+            String scrubbedMsg = DataMasker.scrubValue(b.getMessage(), sendDefaultPii);
+            Map<String, Object> scrubbedData = b.getData() == null
+                    ? null
+                    : DataMasker.maskMetadata(b.getData(), sendDefaultPii);
+            boolean changed = !java.util.Objects.equals(scrubbedMsg, b.getMessage())
+                    || scrubbedData != b.getData();
+            if (changed && out == null) {
+                out = new java.util.ArrayList<>(crumbs.subList(0, i));
+            }
+            if (out != null) {
+                out.add(changed
+                        ? new Breadcrumb(b.getType(), b.getCategory(), scrubbedMsg, b.getLevel(), scrubbedData)
+                        : b);
+            }
+        }
+        return out != null ? out : crumbs;
     }
 
     private static boolean isValidLogLevel(String level) {
