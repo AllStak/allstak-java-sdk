@@ -14,6 +14,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Server-mode "single session" tracker.
@@ -42,6 +43,7 @@ public final class SessionTracker {
     private final HttpTransport transport;
     private final Path statePath;
     private final AtomicReference<Session> active = new AtomicReference<>();
+    private final AtomicLong recoveryCount = new AtomicLong();
     private volatile boolean ended = false;
 
     public SessionTracker(AllStakConfig config, HttpTransport transport) {
@@ -123,6 +125,11 @@ public final class SessionTracker {
     public String currentSessionId() {
         Session s = current();
         return s != null ? s.getId() : null;
+    }
+
+    /** Number of previous open sessions recovered by this tracker. */
+    public long recoveryCount() {
+        return recoveryCount.get();
     }
 
     /** Record an error-level event against the active session. No I/O. */
@@ -230,6 +237,7 @@ public final class SessionTracker {
             previous.setProperty("recoveredAt", Long.toString(now));
             previous.setProperty("recoveryLockUntil", "0");
             writeState(previous);
+            recoveryCount.incrementAndGet();
         } catch (Throwable t) {
             previous.setProperty("recoveryLockUntil", "0");
             writeState(previous);

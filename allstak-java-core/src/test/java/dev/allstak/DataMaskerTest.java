@@ -83,6 +83,34 @@ class DataMaskerTest {
         assertThat(masked.get("SECRET")).isEqualTo("[MASKED]");
     }
 
+    @Test
+    void maskMetadata_redactsSensitiveKeyFragmentsAddedByHooks() {
+        Map<String, Object> metadata = new LinkedHashMap<>();
+        metadata.put("beforeSendToken", "jwt-xxx");
+        metadata.put("beforeSendAuthorization", "Bearer xxx");
+        metadata.put("beforeSendCookie", "sid=abc");
+        metadata.put("nested", Map.of("customApiKey", "key-123"));
+        metadata.put("creditCardNumber", "4242 4242 4242 4242");
+        metadata.put("pan", "4242424242424242");
+        metadata.put("spanId", "00f067aa0ba902b7");
+        metadata.put("parentSpanId", "7a3ce929d0e0e473");
+        metadata.put("orderKeyLabel", "not a credential");
+
+        Map<String, Object> masked = DataMasker.maskMetadata(metadata, false);
+
+        assertThat(masked.get("beforeSendToken")).isEqualTo("[MASKED]");
+        assertThat(masked.get("beforeSendAuthorization")).isEqualTo("[MASKED]");
+        assertThat(masked.get("beforeSendCookie")).isEqualTo("[MASKED]");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> nested = (Map<String, Object>) masked.get("nested");
+        assertThat(nested.get("customApiKey")).isEqualTo("[MASKED]");
+        assertThat(masked.get("creditCardNumber")).isEqualTo("[MASKED]");
+        assertThat(masked.get("pan")).isEqualTo("[MASKED]");
+        assertThat(masked.get("spanId")).isEqualTo("00f067aa0ba902b7");
+        assertThat(masked.get("parentSpanId")).isEqualTo("7a3ce929d0e0e473");
+        assertThat(masked.get("orderKeyLabel")).isEqualTo("not a credential");
+    }
+
     // =========================================================================
     // Value-pattern scrubbing
     // =========================================================================

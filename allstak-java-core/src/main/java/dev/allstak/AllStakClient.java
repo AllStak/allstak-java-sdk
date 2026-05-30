@@ -13,10 +13,13 @@ import dev.allstak.session.SessionTracker;
 import dev.allstak.spool.EventSpool;
 import dev.allstak.transport.HttpTransport;
 import dev.allstak.transport.SendResult;
+import dev.allstak.transport.TransportDiagnostics;
+import dev.allstak.tracing.SpanScope;
 
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Core AllStak SDK client. Manages buffering, flushing, and sending telemetry data.
@@ -81,6 +84,10 @@ public final class AllStakClient {
 
     private final AtomicBoolean shutdown = new AtomicBoolean(false);
     private boolean uncaughtHandlerInstalled = false;
+    private final AtomicLong eventsCaptured = new AtomicLong();
+    private final AtomicLong eventsDropped = new AtomicLong();
+    private final AtomicLong eventsPersisted = new AtomicLong();
+    private final AtomicLong eventsReplayed = new AtomicLong();
 
     /**
      * Release-health session tracker. Non-null when
@@ -221,15 +228,20 @@ public final class AllStakClient {
     private boolean sendOrSpool(String path, Object maskedPayload) {
         SendResult result = transport.sendWithResult(path, maskedPayload);
         if (result == SendResult.TRANSIENT && spool != null) {
+            boolean persisted = false;
             try {
                 // Serialize via the transport's own mapper so the spooled bytes
                 // match the wire form exactly (already scrubbed upstream).
                 com.fasterxml.jackson.databind.JsonNode node =
                         transport.getObjectMapper().valueToTree(maskedPayload);
-                spool.persist(path, node);
+                persisted = spool.persist(path, node);
             } catch (Throwable t) {
                 SdkLogger.debug("Spool persist skipped for {}: {}", path, t.getMessage());
             }
+            if (persisted) eventsPersisted.incrementAndGet();
+            else eventsDropped.incrementAndGet();
+        } else if (result == SendResult.TRANSIENT) {
+            eventsDropped.incrementAndGet();
         }
         return result.isAccepted();
     }
@@ -256,6 +268,7 @@ public final class AllStakClient {
                         // Remove only on a terminal outcome; keep TRANSIENT for
                         // the next drain so a continuing outage is not lost.
                         if (r == SendResult.ACCEPTED || r == SendResult.PERMANENT) {
+                            if (r == SendResult.ACCEPTED) eventsReplayed.incrementAndGet();
                             spool.remove(h);
                         }
                     } catch (Throwable err) {
@@ -330,11 +343,16 @@ public final class AllStakClient {
 
     public void captureException(Throwable throwable, String level, Map<String, Object> metadata) {
         try {
-            if (shutdown.get() || transport.isDisabled()) return;
+            eventsCaptured.incrementAndGet();
+            if (shutdown.get() || transport.isDisabled()) {
+                eventsDropped.incrementAndGet();
+                return;
+            }
 
             // 1. sample_rate drop first — skip dropped events before any work.
             if (isSampledOut(config.getSampleRate())) {
                 SdkLogger.debug("Exception dropped by sampleRate={}", config.getSampleRate());
+                eventsDropped.incrementAndGet();
                 return;
             }
 
@@ -440,6 +458,7 @@ public final class AllStakClient {
             ErrorEvent processed = applyBeforeSend(event);
             if (processed == null) {
                 SdkLogger.debug("Exception dropped by beforeSend");
+                eventsDropped.incrementAndGet();
                 return;
             }
 
@@ -487,16 +506,22 @@ public final class AllStakClient {
                            String requestId, String userId, String errorId,
                            Map<String, Object> metadata) {
         try {
-            if (shutdown.get() || transport.isDisabled()) return;
+            eventsCaptured.incrementAndGet();
+            if (shutdown.get() || transport.isDisabled()) {
+                eventsDropped.incrementAndGet();
+                return;
+            }
 
             if (!isValidLogLevel(level)) {
                 SdkLogger.debug("Invalid log level '{}' — dropping log", level);
+                eventsDropped.incrementAndGet();
                 return;
             }
 
             // 1. sample_rate drop first.
             if (isSampledOut(config.getSampleRate())) {
                 SdkLogger.debug("Log dropped by sampleRate={}", config.getSampleRate());
+                eventsDropped.incrementAndGet();
                 return;
             }
 
@@ -520,6 +545,7 @@ public final class AllStakClient {
             LogEvent processed = applyBeforeSend(event);
             if (processed == null) {
                 SdkLogger.debug("Log dropped by beforeSend");
+                eventsDropped.incrementAndGet();
                 return;
             }
 
@@ -540,7 +566,11 @@ public final class AllStakClient {
 
     public void captureHttpRequest(HttpRequestItem item) {
         try {
-            if (shutdown.get() || transport.isDisabled()) return;
+            eventsCaptured.incrementAndGet();
+            if (shutdown.get() || transport.isDisabled()) {
+                eventsDropped.incrementAndGet();
+                return;
+            }
 
             // Strip query parameters from path, preserve all other fields
             HttpRequestItem sanitized = HttpRequestItem.builder()
@@ -589,7 +619,11 @@ public final class AllStakClient {
 
     public void captureDbQuery(DatabaseQueryItem item) {
         try {
-            if (shutdown.get() || transport.isDisabled()) return;
+            eventsCaptured.incrementAndGet();
+            if (shutdown.get() || transport.isDisabled()) {
+                eventsDropped.incrementAndGet();
+                return;
+            }
 
             // Enrich with config defaults if not set
             DatabaseQueryItem enriched = DatabaseQueryItem.builder()
@@ -746,12 +780,17 @@ public final class AllStakClient {
                             long durationMs, long startTimeMillis, long endTimeMillis,
                             String service, String environment, Map<String, String> tags,
                             Map<String, Object> data, boolean preSampled) {
-        if (shutdown.get() || transport.isDisabled()) return;
+        eventsCaptured.incrementAndGet();
+        if (shutdown.get() || transport.isDisabled()) {
+            eventsDropped.incrementAndGet();
+            return;
+        }
         // Span sampling — when tracesSampleRate is configured, drop unsampled
         // spans. Null keeps the legacy always-on behavior. Skipped when the
         // caller already made the decision (manual transaction/span tree).
         if (!preSampled && !isSpanSampled()) {
             SdkLogger.debug("Span dropped by tracesSampleRate={}", config.getTracesSampleRate());
+            eventsDropped.incrementAndGet();
             return;
         }
         try {
@@ -834,6 +873,45 @@ public final class AllStakClient {
     public AllStakConfig getConfig() { return config; }
     public HttpTransport getTransport() { return transport; }
     public boolean isShutdown() { return shutdown.get(); }
+
+    /** Privacy-safe SDK diagnostics. Contains counters and queue sizes only. */
+    public AllStakDiagnostics getDiagnostics() {
+        TransportDiagnostics tx = transport.getDiagnostics();
+        int bufferQueueSize = logBuffer.size() + httpBuffer.size() + dbQueryBuffer.size();
+        int spoolQueueSize = spool != null ? spool.size() : 0;
+        long bufferDrops = logBuffer.droppedCount()
+                + httpBuffer.droppedCount()
+                + dbQueryBuffer.droppedCount()
+                + breadcrumbBuffer.droppedCount();
+        int activeSpans = SpanScope.depth();
+        return new AllStakDiagnostics(
+                Math.max(eventsCaptured.get(), tx.getEventsCaptured()),
+                tx.getEventsSent(),
+                tx.getEventsFailed(),
+                eventsDropped.get() + tx.getEventsDropped() + bufferDrops,
+                eventsPersisted.get(),
+                eventsReplayed.get(),
+                bufferQueueSize + spoolQueueSize,
+                tx.getRetryAttempts(),
+                tx.getRateLimitedCount(),
+                tx.getCompressedPayloads(),
+                tx.getUncompressedPayloads(),
+                tx.getCompressionBytesSaved(),
+                DataMasker.redactionCount(),
+                activeSpans > 0 ? 1 : 0,
+                activeSpans,
+                breadcrumbBuffer.size() + safeScopeBreadcrumbCount(),
+                sessionTracker != null ? sessionTracker.recoveryCount() : 0,
+                tx.isDisabled() || shutdown.get());
+    }
+
+    private static int safeScopeBreadcrumbCount() {
+        try {
+            return Scopes.mergedForCapture().breadcrumbs().size();
+        } catch (Throwable t) {
+            return 0;
+        }
+    }
 
     /**
      * The id of the active release-health session, or {@code null} when auto

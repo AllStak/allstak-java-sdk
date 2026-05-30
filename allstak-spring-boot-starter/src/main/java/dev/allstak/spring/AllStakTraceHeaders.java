@@ -6,6 +6,7 @@ import org.springframework.http.HttpHeaders;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 final class AllStakTraceHeaders {
     private static final SecureRandom RANDOM = new SecureRandom();
@@ -23,14 +24,16 @@ final class AllStakTraceHeaders {
     static AllStakTraceHeaders from(HttpServletRequest request) {
         String traceparent = request.getHeader("traceparent");
         String traceId = traceIdFromTraceparent(traceparent);
-        if (isBlank(traceId)) traceId = firstHeader(request, "X-AllStak-Trace-Id", "X-Trace-Id");
+        if (isBlank(traceId)) traceId = firstValidTraceHeader(request, "X-AllStak-Trace-Id", "X-Trace-Id");
         String parentSpanId = parentSpanIdFromTraceparent(traceparent);
-        if (isBlank(parentSpanId)) parentSpanId = firstHeader(request, "X-AllStak-Span-Id", "X-Span-Id");
+        if (isBlank(parentSpanId) && !isBlank(traceId)) {
+            parentSpanId = firstValidSpanHeader(request, "X-AllStak-Span-Id", "X-Span-Id");
+        }
         String requestId = firstHeader(request, "X-Request-Id", "X-AllStak-Request-Id");
         return new AllStakTraceHeaders(
-                isBlank(traceId) ? randomHex(16) : traceId,
+                isBlank(traceId) ? randomTraceId() : traceId,
                 parentSpanId == null ? "" : parentSpanId,
-                isBlank(requestId) ? randomHex(16) : requestId);
+                isBlank(requestId) ? randomTraceId() : requestId);
     }
 
     static String randomTraceId() {
@@ -76,15 +79,17 @@ final class AllStakTraceHeaders {
      *                    {@code "00"} not sampled.
      */
     static void apply(HttpHeaders target, String traceId, String requestId, String spanId, String sampledFlag) {
-        String flag = isBlank(sampledFlag) ? "01" : sampledFlag;
-        target.set("X-AllStak-Trace-Id", traceId);
+        String flag = sampledFlag != null && sampledFlag.matches("(?i)^[0-9a-f]{2}$") ? sampledFlag.toLowerCase(Locale.ROOT) : "01";
+        String wireTraceId = normalizeTraceId(traceId);
+        String wireSpanId = isBlank(spanId) ? null : normalizeSpanId(spanId);
+        target.set("X-AllStak-Trace-Id", wireTraceId);
         if (!isBlank(requestId)) target.set("X-AllStak-Request-Id", requestId);
-        if (!isBlank(spanId)) {
-            target.set("X-AllStak-Span-Id", spanId);
-            target.set("traceparent", "00-" + traceId + "-" + spanId.substring(0, Math.min(16, spanId.length())) + "-" + flag);
+        if (!isBlank(wireSpanId)) {
+            target.set("X-AllStak-Span-Id", wireSpanId);
+            target.set("traceparent", "00-" + wireTraceId + "-" + wireSpanId + "-" + flag);
         }
-        target.set("baggage", mergeBaggage(target.getFirst("baggage"), traceId, requestId, spanId));
-        target.set("AllStak-Baggage", baggage(traceId, requestId, spanId));
+        target.set("baggage", mergeBaggage(target.getFirst("baggage"), wireTraceId, requestId, wireSpanId));
+        target.set("AllStak-Baggage", baggage(wireTraceId, requestId, wireSpanId));
     }
 
     private static String firstHeader(HttpServletRequest request, String... names) {
@@ -98,13 +103,67 @@ final class AllStakTraceHeaders {
     private static String traceIdFromTraceparent(String traceparent) {
         if (traceparent == null) return null;
         String[] parts = traceparent.trim().split("-");
-        return parts.length >= 2 && parts[1].length() == 32 ? parts[1] : null;
+        if (parts.length != 4 || !"00".equals(parts[0]) || !parts[3].matches("(?i)^[0-9a-f]{2}$")) return null;
+        String traceId = parts[1].toLowerCase(Locale.ROOT);
+        return isValidTraceId(traceId) ? traceId : null;
     }
 
     private static String parentSpanIdFromTraceparent(String traceparent) {
         if (traceparent == null) return null;
         String[] parts = traceparent.trim().split("-");
-        return parts.length >= 3 && parts[2].length() == 16 ? parts[2] : null;
+        if (parts.length != 4 || !"00".equals(parts[0]) || !parts[3].matches("(?i)^[0-9a-f]{2}$")) return null;
+        String spanId = parts[2].toLowerCase(Locale.ROOT);
+        return isValidSpanId(spanId) ? spanId : null;
+    }
+
+    private static String firstValidTraceHeader(HttpServletRequest request, String... names) {
+        for (String name : names) {
+            String value = request.getHeader(name);
+            if (!isBlank(value)) {
+                String normalized = value.trim().toLowerCase(Locale.ROOT);
+                if (isValidTraceId(normalized)) return normalized;
+            }
+        }
+        return null;
+    }
+
+    private static String firstValidSpanHeader(HttpServletRequest request, String... names) {
+        for (String name : names) {
+            String value = request.getHeader(name);
+            if (!isBlank(value)) {
+                String normalized = value.trim().toLowerCase(Locale.ROOT);
+                if (isValidSpanId(normalized)) return normalized;
+            }
+        }
+        return null;
+    }
+
+    static String normalizeTraceId(String traceId) {
+        String hex = traceId == null ? "" : traceId.replaceAll("[^0-9A-Fa-f]", "").toLowerCase(Locale.ROOT);
+        String candidate = hex.length() >= 32
+                ? hex.substring(0, 32)
+                : (!hex.isEmpty() ? String.format("%-32s", hex).replace(' ', '0') : "");
+        return isValidTraceId(candidate) ? candidate : randomTraceId();
+    }
+
+    static String normalizeSpanId(String spanId) {
+        String hex = spanId == null ? "" : spanId.replaceAll("[^0-9A-Fa-f]", "").toLowerCase(Locale.ROOT);
+        String candidate = hex.length() >= 16
+                ? hex.substring(0, 16)
+                : (!hex.isEmpty() ? String.format("%-16s", hex).replace(' ', '0') : "");
+        return isValidSpanId(candidate) ? candidate : randomSpanId();
+    }
+
+    private static boolean isValidTraceId(String traceId) {
+        return traceId != null
+                && traceId.matches("^[0-9a-f]{32}$")
+                && !traceId.matches("^0{32}$");
+    }
+
+    private static boolean isValidSpanId(String spanId) {
+        return spanId != null
+                && spanId.matches("^[0-9a-f]{16}$")
+                && !spanId.matches("^0{16}$");
     }
 
     static boolean isBlank(String value) {
@@ -116,6 +175,8 @@ final class AllStakTraceHeaders {
         RANDOM.nextBytes(data);
         StringBuilder out = new StringBuilder(bytes * 2);
         for (byte b : data) out.append(String.format("%02x", b));
-        return out.toString();
+        String value = out.toString();
+        if (value.matches("^0+$")) return "1" + value.substring(1);
+        return value;
     }
 }

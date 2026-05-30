@@ -3,6 +3,7 @@ package dev.allstak.buffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Thread-safe bounded FIFO ring buffer. When full, the oldest item is evicted (tail-drop).
@@ -15,6 +16,7 @@ public final class RingBuffer<T> {
     private int size = 0;
     private final ReentrantLock lock = new ReentrantLock();
     private volatile boolean droppedWarningEmitted = false;
+    private final AtomicLong droppedCount = new AtomicLong();
 
     public RingBuffer(int capacity) {
         if (capacity <= 0) throw new IllegalArgumentException("capacity must be positive");
@@ -29,6 +31,7 @@ public final class RingBuffer<T> {
                 // Overwrite oldest (tail-drop)
                 items[head] = item;
                 head = (head + 1) % capacity;
+                droppedCount.incrementAndGet();
                 if (!droppedWarningEmitted) {
                     droppedWarningEmitted = true;
                 }
@@ -72,6 +75,10 @@ public final class RingBuffer<T> {
 
     public int capacity() {
         return capacity;
+    }
+
+    public long droppedCount() {
+        return droppedCount.get();
     }
 
     public boolean isAtCapacityThreshold() {

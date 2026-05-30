@@ -293,6 +293,21 @@ public final class AllStak {
         c.flush();
     }
 
+    /**
+     * Privacy-safe SDK diagnostics. Contains counters and queue sizes only.
+     * Returns a disabled zero snapshot before initialization.
+     */
+    public static AllStakDiagnostics getDiagnostics() {
+        AllStakClient c = CLIENT.get();
+        if (c == null) {
+            return new AllStakDiagnostics(
+                    0, 0, 0, 0, 0, 0, 0,
+                    0, 0, 0, 0, 0, dev.allstak.masking.DataMasker.redactionCount(),
+                    0, 0, 0, 0, true);
+        }
+        return c.getDiagnostics();
+    }
+
     public static void shutdown() {
         AllStakClient c = CLIENT.getAndSet(null);
         if (c != null) {

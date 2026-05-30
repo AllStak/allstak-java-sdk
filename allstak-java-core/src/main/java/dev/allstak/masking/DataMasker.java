@@ -9,6 +9,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -45,6 +46,7 @@ public final class DataMasker {
     private static final String FILTERED = "[FILTERED]";
     private static final String REDACTED = "[REDACTED]";
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final AtomicLong REDACTION_COUNT = new AtomicLong();
 
     /**
      * Strings longer than this are not value-scanned (returned unchanged but
@@ -86,6 +88,10 @@ public final class DataMasker {
             "set-cookie", "iban", "pan", "cvc"
     );
 
+    private static final Pattern SENSITIVE_METADATA_KEY_FRAGMENT = Pattern.compile(
+            "(authorization|cookie|setcookie|password|passwd|pwd|passcode|otp|mfa|totp|pin|token|secret|apikey|accesskey|accesskeyid|accesssecret|accesssecretkey|accesskeysecret|accesstoken|refreshtoken|idtoken|jwt|bearer|clientsecret|creditcard|cardnumber|phone|mobile|email|iban|nationalid|idnumber|ssn|cvv|cvc)"
+    );
+
     private static final Set<String> SENSITIVE_HEADERS = Set.of(
             "authorization", "cookie", "x-allstak-key", "x-api-key", "x-auth-token"
     );
@@ -105,6 +111,11 @@ public final class DataMasker {
 
     private DataMasker() {}
 
+    /** Number of sanitizer redaction operations observed in this JVM. */
+    public static long redactionCount() {
+        return REDACTION_COUNT.get();
+    }
+
     /**
      * Mask sensitive keys in a metadata map (key-name redaction only). Retained
      * for back-compat; prefer {@link #maskMetadata(Map, boolean)} which also
@@ -114,8 +125,8 @@ public final class DataMasker {
         if (metadata == null || metadata.isEmpty()) return metadata;
         Map<String, Object> result = new LinkedHashMap<>(metadata.size());
         for (Map.Entry<String, Object> entry : metadata.entrySet()) {
-            String keyLower = entry.getKey().toLowerCase();
-            if (SENSITIVE_METADATA_KEYS.contains(keyLower)) {
+            if (isSensitiveMetadataKey(entry.getKey())) {
+                REDACTION_COUNT.incrementAndGet();
                 result.put(entry.getKey(), MASKED);
             } else {
                 result.put(entry.getKey(), entry.getValue());
@@ -155,13 +166,22 @@ public final class DataMasker {
         Map<String, Object> result = new LinkedHashMap<>(metadata.size());
         for (Map.Entry<String, Object> entry : metadata.entrySet()) {
             String key = entry.getKey();
-            if (key != null && SENSITIVE_METADATA_KEYS.contains(key.toLowerCase())) {
+            if (isSensitiveMetadataKey(key)) {
+                REDACTION_COUNT.incrementAndGet();
                 result.put(key, MASKED);
             } else {
                 result.put(key, scrubMetadataValue(entry.getValue(), sendDefaultPii, depth));
             }
         }
         return result;
+    }
+
+    private static boolean isSensitiveMetadataKey(String key) {
+        if (key == null || key.isBlank()) return false;
+        String lower = key.toLowerCase();
+        if (SENSITIVE_METADATA_KEYS.contains(lower)) return true;
+        String normalized = lower.replaceAll("[^a-z0-9]", "");
+        return SENSITIVE_METADATA_KEY_FRAGMENT.matcher(normalized).find();
     }
 
     @SuppressWarnings("unchecked")
@@ -198,6 +218,7 @@ public final class DataMasker {
                 out = EMAIL.matcher(out).replaceAll(REDACTED);
                 out = IPV4.matcher(out).replaceAll(REDACTED);
             }
+            if (!out.equals(value)) REDACTION_COUNT.incrementAndGet();
             return out;
         } catch (Throwable t) {
             return value;

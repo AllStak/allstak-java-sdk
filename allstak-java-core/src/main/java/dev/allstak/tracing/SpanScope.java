@@ -77,6 +77,15 @@ public final class SpanScope {
         }
     }
 
+    /** Number of active spans on this thread. Used for counter-only diagnostics. */
+    public static int depth() {
+        try {
+            return STACK.get().size();
+        } catch (Throwable t) {
+            return 0;
+        }
+    }
+
     /** Clear the active-span stack for this thread — used by tests / reset. */
     public static void clear() {
         try {

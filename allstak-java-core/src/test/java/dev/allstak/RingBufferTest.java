@@ -34,6 +34,7 @@ class RingBufferTest {
 
         List<Integer> drained = buffer.drain();
         assertThat(drained).containsExactly(3, 4, 5);
+        assertThat(buffer.droppedCount()).isEqualTo(2);
     }
 
     @Test

@@ -144,6 +144,9 @@ class BeforeSendSamplingTest {
                         java.util.Map<String, Object> meta = new java.util.LinkedHashMap<>(
                                 e.getMetadata() == null ? java.util.Map.of() : e.getMetadata());
                         meta.put("Authorization", "Bearer abc");
+                        meta.put("beforeSendToken", "hook-token");
+                        meta.put("beforeSendAuthorization", "Bearer hook-token");
+                        meta.put("beforeSendCookie", "sid=hook");
                         meta.put("nested", java.util.Map.of("token", "secret-token"));
                         return new ErrorEvent(e.getExceptionClass(), "card 4111111111111111", e.getStackTrace(),
                                 e.getLevel(), e.getEnvironment(), e.getRelease(), e.getSessionId(),
@@ -160,6 +163,9 @@ class BeforeSendSamplingTest {
         wireMock.verify(postRequestedFor(urlEqualTo("/ingest/v1/errors"))
                 .withRequestBody(containing("\"message\":\"card [REDACTED]\""))
                 .withRequestBody(containing("\"Authorization\":\"[MASKED]\""))
+                .withRequestBody(containing("\"beforeSendToken\":\"[MASKED]\""))
+                .withRequestBody(containing("\"beforeSendAuthorization\":\"[MASKED]\""))
+                .withRequestBody(containing("\"beforeSendCookie\":\"[MASKED]\""))
                 .withRequestBody(containing("\"token\":\"[MASKED]\"")));
         client.shutdown();
     }
