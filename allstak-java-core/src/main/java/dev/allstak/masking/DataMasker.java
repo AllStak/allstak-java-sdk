@@ -20,7 +20,7 @@ import java.util.regex.Pattern;
  *   <li><b>Key-name redaction</b> (existing) — keys/fields whose <em>name</em>
  *       looks sensitive (password/token/cookie/…) are blanked regardless of
  *       value. Applies to metadata maps and request/response bodies.</li>
- *   <li><b>Value-pattern scrubbing</b> (Sentry data-scrubbing parity) — PII
+ *   <li><b>Value-pattern scrubbing</b> — PII
  *       that leaks into free-text <em>values</em> is matched by shape and
  *       replaced with {@value #REDACTED}. Layered:
  *       <ul>

@@ -29,8 +29,6 @@ import java.util.function.Consumer;
  * call should read from. Precedence: <b>Current &gt; Isolation &gt; Global</b>
  * for scalars; for maps and breadcrumb lists, all three layers are merged
  * with the more specific layer overwriting / appending.
- *
- * <p>Inspired by the Sentry 8.x Scopes API.
  */
 public final class Scopes {
 

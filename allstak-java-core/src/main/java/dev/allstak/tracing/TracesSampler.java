@@ -19,8 +19,8 @@ package dev.allstak.tracing;
  * }</pre>
  *
  * <p>Returning {@code null} delegates back to {@code tracesSampleRate}. When
- * a remote parent's sampled bit is present the sampler still gets called —
- * Sentry-style: parent's bit only wins if the sampler returns {@code null}
+ * a remote parent's sampled bit is present the sampler still gets called:
+ * the parent's bit only wins if the sampler returns {@code null}
  * AND no static rate is set.
  */
 @FunctionalInterface

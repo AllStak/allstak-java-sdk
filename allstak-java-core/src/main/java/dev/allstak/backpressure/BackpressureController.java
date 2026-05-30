@@ -17,7 +17,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * static rate (e.g. {@code tracesSampleRate}). This way no AllStak
  * subsystem needs to know about the others.
  *
- * <p>Mirrors Sentry's "enableBackpressureHandling" mode in spirit, with
+ * <p>Provides adaptive backpressure handling, with
  * a deliberately simple multiplicative-decrease / additive-increase
  * controller — the goal is to absorb transient saturation, not to be a
  * full PID loop.

@@ -50,8 +50,8 @@ class AllStakClientIntegrationTest {
                 .flushIntervalMs(500) // fast flush for tests
                 .bufferSize(100)
                 .serviceName("test-service")
-                // These integration tests pre-date Sentry-style PII defaults
-                // (Phase A.3) and assert email/ip on outgoing events. Opt in
+                // These integration tests pre-date the privacy-by-default PII
+                // behavior (Phase A.3) and assert email/ip on outgoing events. Opt in
                 // here so the original assertions stand; the privacy-by-default
                 // path is covered by PiiDefaultsTest.
                 .sendDefaultPii(true)

@@ -11,9 +11,8 @@ import java.util.Map;
  * can weight high-value routes (checkout, signup) heavier than chatty ones
  * (health, polling).
  *
- * <p>Mirrors Sentry's {@code SamplingContext}: request-shape data + the
- * parent's sampled bit propagated through the incoming {@code traceparent}
- * or {@code sentry-trace} header.
+ * <p>Carries request-shape data plus the parent's sampled bit propagated
+ * through the incoming W3C {@code traceparent} header.
  */
 public final class SamplingContext {
 

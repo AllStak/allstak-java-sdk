@@ -223,7 +223,10 @@ public class AllStakAutoConfiguration {
     // optional integration lives in its own nested @Configuration.
     // =====================================================================
 
-    /** Phase B.1 — OkHttp interceptor on every {@code OkHttpClient.Builder}. */
+    /**
+     * OkHttp — exposes the interceptor bean AND auto-attaches it to every
+     * {@code OkHttpClient} bean, so outbound HTTP capture needs no per-call code.
+     */
     @org.springframework.context.annotation.Configuration
     @ConditionalOnClass(name = "okhttp3.OkHttpClient")
     @ConditionalOnProperty(prefix = "allstak", name = "capture-ok-http", havingValue = "true", matchIfMissing = true)
@@ -233,17 +236,32 @@ public class AllStakAutoConfiguration {
         public dev.allstak.okhttp.AllStakOkHttpInterceptor allStakOkHttpInterceptor() {
             return new dev.allstak.okhttp.AllStakOkHttpInterceptor();
         }
+
+        @Bean
+        public AllStakOkHttpClientPostProcessor allStakOkHttpClientPostProcessor(
+                dev.allstak.okhttp.AllStakOkHttpInterceptor interceptor) {
+            return new AllStakOkHttpClientPostProcessor(interceptor);
+        }
     }
 
-    /** Phase B.2 — Apache HttpClient 5 request+response interceptor. */
+    /**
+     * Apache HttpClient 5 — exposes the interceptor bean AND auto-attaches its
+     * request/response halves to every {@code HttpClientBuilder} bean.
+     */
     @org.springframework.context.annotation.Configuration
-    @ConditionalOnClass(name = "org.apache.hc.core5.http.HttpRequest")
+    @ConditionalOnClass(name = "org.apache.hc.client5.http.impl.classic.HttpClientBuilder")
     @ConditionalOnProperty(prefix = "allstak", name = "capture-apache-http", havingValue = "true", matchIfMissing = true)
     public static class ApacheHttp5AutoConfiguration {
         @Bean
         @ConditionalOnMissingBean
         public dev.allstak.apache.AllStakApacheHttpInterceptor allStakApacheHttpInterceptor() {
             return new dev.allstak.apache.AllStakApacheHttpInterceptor();
+        }
+
+        @Bean
+        public AllStakApacheHttpClientPostProcessor allStakApacheHttpClientPostProcessor(
+                dev.allstak.apache.AllStakApacheHttpInterceptor interceptor) {
+            return new AllStakApacheHttpClientPostProcessor(interceptor);
         }
     }
 
@@ -333,6 +351,101 @@ public class AllStakAutoConfiguration {
                     return bean;
                 }
             };
+        }
+    }
+
+    /**
+     * gRPC — registers the AllStak server interceptor on every
+     * {@code io.grpc.ServerBuilder} bean so inbound calls inherit trace context.
+     */
+    @org.springframework.context.annotation.Configuration
+    @ConditionalOnClass(name = "io.grpc.ServerBuilder")
+    @ConditionalOnProperty(prefix = "allstak", name = "capture-grpc", havingValue = "true", matchIfMissing = true)
+    public static class GrpcAutoConfiguration {
+        @Bean
+        @ConditionalOnMissingBean
+        public dev.allstak.grpc.AllStakGrpcServerInterceptor allStakGrpcServerInterceptor() {
+            return new dev.allstak.grpc.AllStakGrpcServerInterceptor();
+        }
+
+        @Bean
+        public AllStakGrpcServerBuilderPostProcessor allStakGrpcServerBuilderPostProcessor(
+                dev.allstak.grpc.AllStakGrpcServerInterceptor interceptor) {
+            return new AllStakGrpcServerBuilderPostProcessor(interceptor);
+        }
+    }
+
+    /**
+     * GraphQL — exposes the AllStak graphql-java {@code Instrumentation} as a
+     * bean. Spring GraphQL collects every {@code Instrumentation} bean and
+     * applies it to the {@code GraphQlSource}, so one span per operation is
+     * emitted with no manual builder wiring.
+     */
+    @org.springframework.context.annotation.Configuration
+    @ConditionalOnClass(name = "graphql.execution.instrumentation.Instrumentation")
+    @ConditionalOnProperty(prefix = "allstak", name = "capture-graphql", havingValue = "true", matchIfMissing = true)
+    public static class GraphqlAutoConfiguration {
+        @Bean
+        @ConditionalOnMissingBean
+        public graphql.execution.instrumentation.Instrumentation allStakGraphqlInstrumentation() {
+            return new dev.allstak.graphql.AllStakGraphqlInstrumentation();
+        }
+    }
+
+    /**
+     * Spring Kafka — appends the AllStak producer/consumer interceptor class
+     * names to every {@code DefaultKafkaProducerFactory}/
+     * {@code DefaultKafkaConsumerFactory} bean's config so trace headers flow
+     * across topics automatically. Existing {@code interceptor.classes} entries
+     * are preserved (the AllStak class is appended, never replacing the user's).
+     */
+    @org.springframework.context.annotation.Configuration
+    @ConditionalOnClass(name = {
+            "org.springframework.kafka.core.DefaultKafkaProducerFactory",
+            "org.apache.kafka.clients.producer.ProducerConfig"
+    })
+    @ConditionalOnProperty(prefix = "allstak", name = "capture-kafka", havingValue = "true", matchIfMissing = true)
+    public static class KafkaAutoConfiguration {
+        @Bean
+        public org.springframework.beans.factory.config.BeanPostProcessor allStakKafkaFactoryPostProcessor() {
+            return new AllStakKafkaFactoryPostProcessor();
+        }
+    }
+
+    /**
+     * Lettuce — registers a {@code ClientResourcesBuilderCustomizer} that wires
+     * the AllStak tracing adapter into the Lettuce {@code ClientResources} Spring
+     * Boot builds for the auto-configured Redis connection factory, so one span
+     * per Redis command is emitted with no manual {@code ClientResources} wiring.
+     */
+    @org.springframework.context.annotation.Configuration
+    @ConditionalOnClass(name = {
+            "io.lettuce.core.resource.ClientResources",
+            "org.springframework.boot.autoconfigure.data.redis.ClientResourcesBuilderCustomizer"
+    })
+    @ConditionalOnProperty(prefix = "allstak", name = "capture-lettuce", havingValue = "true", matchIfMissing = true)
+    public static class LettuceAutoConfiguration {
+        @Bean
+        public org.springframework.boot.autoconfigure.data.redis.ClientResourcesBuilderCustomizer allStakLettuceClientResourcesCustomizer() {
+            return builder -> builder.tracing(dev.allstak.lettuce.AllStakLettuceTracing.create());
+        }
+    }
+
+    /**
+     * MongoDB — registers a {@code MongoClientSettingsBuilderCustomizer} that
+     * adds the AllStak command listener to the auto-configured Mongo client, so
+     * one span per command is emitted with no manual settings wiring.
+     */
+    @org.springframework.context.annotation.Configuration
+    @ConditionalOnClass(name = {
+            "com.mongodb.event.CommandListener",
+            "org.springframework.boot.autoconfigure.mongo.MongoClientSettingsBuilderCustomizer"
+    })
+    @ConditionalOnProperty(prefix = "allstak", name = "capture-mongodb", havingValue = "true", matchIfMissing = true)
+    public static class MongoAutoConfiguration {
+        @Bean
+        public org.springframework.boot.autoconfigure.mongo.MongoClientSettingsBuilderCustomizer allStakMongoCommandListenerCustomizer() {
+            return builder -> builder.addCommandListener(new dev.allstak.mongodb.AllStakMongoCommandListener());
         }
     }
 

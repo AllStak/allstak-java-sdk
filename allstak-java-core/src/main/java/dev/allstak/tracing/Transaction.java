@@ -4,7 +4,7 @@ import dev.allstak.AllStakClient;
 import dev.allstak.internal.SdkLogger;
 
 /**
- * The root span of a trace, modeled on Sentry's {@code ITransaction}. A
+ * The root span of a trace. A
  * transaction carries a human-readable {@code name} (usually the inbound route
  * or job name) and an {@code op} (e.g. {@code "http.server"}, {@code "task"}),
  * makes the trace's sampling decision <b>once</b> at start, and serves as the

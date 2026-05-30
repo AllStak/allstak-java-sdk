@@ -1,14 +1,14 @@
 package dev.allstak.tracing;
 
 /**
- * Canonical span/transaction outcome statuses, modeled on Sentry's
- * {@code SpanStatus} (which in turn mirrors the OpenTelemetry status set).
+ * Canonical span/transaction outcome statuses, modeled on the
+ * OpenTelemetry status set.
  * The on-the-wire value is the lowercase {@link #wire()} string; the AllStak
  * spans ingest already understands {@code "ok"} / {@code "error"} and tolerates
  * the richer set as free-form status text.
  *
  * <p>Use {@link #fromHttpStatus(int)} to map an HTTP response code to a span
- * status the way Sentry does, so HTTP-client/-server spans report a meaningful
+ * status, so HTTP-client/-server spans report a meaningful
  * outcome without callers hand-rolling the mapping.
  */
 public enum SpanStatus {
@@ -43,8 +43,7 @@ public enum SpanStatus {
     }
 
     /**
-     * Map an HTTP status code to the closest span status, matching Sentry's
-     * {@code SpanStatus.fromHttpStatusCode}. 2xx/3xx ⇒ {@link #OK}; the common
+     * Map an HTTP status code to the closest span status. 2xx/3xx ⇒ {@link #OK}; the common
      * 4xx/5xx codes map to their dedicated statuses; anything else in the
      * error range falls back to {@link #UNKNOWN} / {@link #INTERNAL_ERROR}.
      */

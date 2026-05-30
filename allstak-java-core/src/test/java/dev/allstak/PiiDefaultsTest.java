@@ -12,7 +12,7 @@ import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMoc
 import static org.awaitility.Awaitility.await;
 
 /**
- * Verifies the default privacy posture matches Sentry's
+ * Verifies the default privacy posture follows the
  * {@code sendDefaultPii=false} stance: email + ip stripped from outgoing
  * events unless the caller explicitly opts in.
  */

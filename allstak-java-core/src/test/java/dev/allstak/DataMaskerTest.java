@@ -84,7 +84,7 @@ class DataMaskerTest {
     }
 
     // =========================================================================
-    // Value-pattern scrubbing (Sentry data-scrubbing parity)
+    // Value-pattern scrubbing
     // =========================================================================
 
     @Test

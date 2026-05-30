@@ -6,6 +6,61 @@ All notable changes to the AllStak Java SDK live here. Format follows
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-05-30
+
+### Added — Spring Boot auto-attachment for client/factory integrations
+
+The starter advertised OkHttp / Apache HttpClient 5 / Kafka / gRPC /
+graphql-java / Lettuce / MongoDB instrumentation, but several of these
+only exposed an interceptor bean (or nothing) and were never attached to
+the developer's client — and `capture-kafka`, `capture-lettuce`, and
+`capture-graphql` gated nothing. These integrations are now genuinely
+automatic: register your normal bean and get the telemetry with no
+per-call code.
+
+- **OkHttp** — `AllStakOkHttpClientPostProcessor` rebuilds every
+  `OkHttpClient` bean with the AllStak interceptor attached (idempotent:
+  never double-instruments). Gated by `allstak.capture-ok-http`.
+- **Apache HttpClient 5** — `AllStakApacheHttpClientPostProcessor`
+  attaches the request/response interceptor pair to every
+  `HttpClientBuilder` bean. Gated by `allstak.capture-apache-http`.
+- **Spring Kafka** — `AllStakKafkaFactoryPostProcessor` appends the
+  AllStak producer/consumer interceptor class names to every
+  `DefaultKafkaProducerFactory` / `DefaultKafkaConsumerFactory`,
+  preserving any interceptors the developer already configured. Gated by
+  `allstak.capture-kafka` (previously a dead property).
+- **gRPC** — `AllStakGrpcServerBuilderPostProcessor` registers the
+  AllStak server interceptor on every `io.grpc.ServerBuilder` bean. New
+  gate `allstak.capture-grpc`.
+- **graphql-java / Spring GraphQL** — the AllStak `Instrumentation` is
+  now exposed as a bean so Spring GraphQL applies it automatically. Gated
+  by `allstak.capture-graphql` (previously a dead property).
+- **Lettuce (Spring Data Redis)** — a `ClientResourcesBuilderCustomizer`
+  wires the AllStak Redis-command tracing into the auto-configured
+  `ClientResources`. Gated by `allstak.capture-lettuce` (previously a dead
+  property).
+- **MongoDB (Spring Data MongoDB)** — a
+  `MongoClientSettingsBuilderCustomizer` adds the AllStak command listener
+  to the auto-configured Mongo client. New gate `allstak.capture-mongodb`.
+
+### Changed
+
+- Apache HttpClient 5 auto-config now gates on the classic
+  `HttpClientBuilder` type so the interceptor is only wired when the
+  classic client is actually present.
+- README "what auto-activates" table corrected to distinguish truly
+  automatic integrations (attached to your bean) from helper-based modules
+  that require explicit wiring (gRPC client, Jedis, R2DBC, JMS, RabbitMQ,
+  Kotlin coroutines, OpenTelemetry), with the exact gate property for each.
+
+### Notes
+
+- All previously-working auto-config (RestTemplate / WebClient / JDBC /
+  Logback / Log4j2 / `@Scheduled` / Quartz / Reactor / Feign / Spring
+  Security / Spring Cache / JFR) is unchanged.
+- Every integration stays default-on and individually toggleable, and only
+  activates when its library is on the classpath (`@ConditionalOnClass`).
+
 ## [0.3.0] — 2026-05-29
 
 ### Added — release-health session tracking

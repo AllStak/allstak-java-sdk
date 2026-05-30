@@ -58,9 +58,10 @@ public class AllStakProperties {
     private java.util.List<String> tracePropagationTargets;
     /** Phase E.2 — start a JFR-based continuous profiler at app boot. */
     private boolean enableProfiling = false;
-    /** Phase B/C feature gates — let users disable individual integrations without
-     *  removing the module from the classpath. Defaults follow Sentry's stance:
-     *  on when the dependency is present. */
+    /** Feature gates — let users disable individual integrations without
+     *  removing the module from the classpath. Each defaults to ON and only
+     *  activates when its third-party library is present on the classpath
+     *  ({@code @ConditionalOnClass}). */
     private boolean captureOkHttp = true;
     private boolean captureApacheHttp = true;
     private boolean captureFeign = true;
@@ -71,6 +72,8 @@ public class AllStakProperties {
     private boolean captureLettuce = true;
     private boolean captureGraphql = true;
     private boolean captureSpringCache = true;
+    private boolean captureGrpc = true;
+    private boolean captureMongodb = true;
 
     public boolean isInstallUncaughtExceptionHandler() { return installUncaughtExceptionHandler; }
     public void setInstallUncaughtExceptionHandler(boolean installUncaughtExceptionHandler) { this.installUncaughtExceptionHandler = installUncaughtExceptionHandler; }
@@ -142,4 +145,8 @@ public class AllStakProperties {
     public void setCaptureGraphql(boolean v) { this.captureGraphql = v; }
     public boolean isCaptureSpringCache() { return captureSpringCache; }
     public void setCaptureSpringCache(boolean v) { this.captureSpringCache = v; }
+    public boolean isCaptureGrpc() { return captureGrpc; }
+    public void setCaptureGrpc(boolean v) { this.captureGrpc = v; }
+    public boolean isCaptureMongodb() { return captureMongodb; }
+    public void setCaptureMongodb(boolean v) { this.captureMongodb = v; }
 }

@@ -7,12 +7,12 @@
     <parent>
         <groupId>sa.allstak</groupId>
         <artifactId>allstak-java-parent</artifactId>
-        <version>0.3.0</version>
+        <version>0.4.0</version>
     </parent>
 
     <groupId>sa.allstak</groupId>
     <artifactId>allstak-spring-boot-starter</artifactId>
-    <version>0.3.0</version>
+    <version>0.4.0</version>
     <name>AllStak Java SDK - Spring Boot Starter</name>
     <description>Spring Boot auto-configuration for AllStak SDK</description>
     <url>https://github.com/allstak-io/allstak-java-sdk</url>
@@ -155,6 +155,26 @@
         <dependency><groupId>io.projectreactor</groupId><artifactId>reactor-core</artifactId><version>3.6.4</version><optional>true</optional></dependency>
         <dependency><groupId>org.quartz-scheduler</groupId><artifactId>quartz</artifactId><version>2.3.2</version><optional>true</optional></dependency>
         <dependency><groupId>org.springframework.security</groupId><artifactId>spring-security-core</artifactId><version>6.2.3</version><optional>true</optional></dependency>
+        <!-- gRPC server-side types (ServerBuilder/ServerInterceptor) referenced by the
+             gRPC auto-config BeanPostProcessor. Optional: skipped at runtime via
+             @ConditionalOnClass unless the customer's app already uses gRPC. -->
+        <dependency><groupId>io.grpc</groupId><artifactId>grpc-api</artifactId><version>1.63.0</version><optional>true</optional></dependency>
+        <!-- graphql-java Instrumentation SPI — referenced so Spring GraphQL can pick
+             up the AllStak instrumentation bean automatically. -->
+        <dependency><groupId>com.graphql-java</groupId><artifactId>graphql-java</artifactId><version>22.0</version><optional>true</optional></dependency>
+        <!-- Lettuce ClientResources/Tracing — referenced by the Lettuce customizer. -->
+        <dependency><groupId>io.lettuce</groupId><artifactId>lettuce-core</artifactId><version>6.3.2.RELEASE</version><optional>true</optional></dependency>
+        <!-- MongoDB driver CommandListener SPI — referenced by the Mongo customizer. -->
+        <dependency><groupId>org.mongodb</groupId><artifactId>mongodb-driver-core</artifactId><version>5.1.0</version><optional>true</optional></dependency>
+        <!-- Kafka clients ConsumerConfig/ProducerConfig keys — referenced by the
+             Spring Kafka factory customizers to append interceptor.classes. -->
+        <dependency><groupId>org.apache.kafka</groupId><artifactId>kafka-clients</artifactId><version>3.7.0</version><optional>true</optional></dependency>
+        <!-- Spring integration SPIs used to AUTO-WIRE the above interceptors onto the
+             customer's client/factory beans. Each is optional so it never lands on the
+             customer runtime classpath; the nested @Configuration is @ConditionalOnClass
+             gated, so a missing SPI simply skips that auto-wiring. -->
+        <dependency><groupId>org.springframework.kafka</groupId><artifactId>spring-kafka</artifactId><version>3.1.4</version><optional>true</optional></dependency>
+        <dependency><groupId>org.springframework.data</groupId><artifactId>spring-data-redis</artifactId><version>3.2.4</version><optional>true</optional></dependency>
 
         <!-- Test -->
         <dependency>
@@ -181,5 +201,13 @@
             <version>4.2.0</version>
             <scope>test</scope>
         </dependency>
+        <!-- Test-only note: the optional third-party clients above (okhttp, httpclient5,
+             grpc-api, graphql-java, lettuce-core, mongodb-driver-core, kafka-clients,
+             spring-kafka, spring-data-redis) are already on the compile classpath via
+             optional=true, which is visible to tests too — so they are NOT redeclared
+             here (a duplicate test-scope entry would shadow the compile entry and break
+             main compilation). The gRPC auto-wiring test uses a tiny in-test
+             ServerBuilder subclass built solely from grpc-api types, so no gRPC
+             transport (netty / inprocess) is needed. -->
     </dependencies>
 </project>

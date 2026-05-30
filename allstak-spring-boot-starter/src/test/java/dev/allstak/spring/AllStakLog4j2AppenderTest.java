@@ -156,7 +156,7 @@ class AllStakLog4j2AppenderTest {
         String marker = "Log4j2-promoted-marker-" + System.nanoTime();
         IllegalStateException boom = new IllegalStateException(marker);
         appender.append(event("com.acme.AuditWriter", Level.ERROR,
-                "ClickHouse audit write failed: action=X", boom));
+                "audit store write failed: action=X", boom));
 
         await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
             wireMock.verify(postRequestedFor(urlEqualTo("/ingest/v1/errors"))

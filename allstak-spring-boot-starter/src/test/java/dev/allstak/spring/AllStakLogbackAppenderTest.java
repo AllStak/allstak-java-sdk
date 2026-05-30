@@ -32,8 +32,8 @@ import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMoc
 import static org.awaitility.Awaitility.await;
 
 /**
- * Behavioral tests for {@link AllStakLogbackAppender}. Focuses on the new
- * Sentry-parity behavior: {@code ERROR}-level events that carry a real
+ * Behavioral tests for {@link AllStakLogbackAppender}. Focuses on the
+ * error-promotion behavior: {@code ERROR}-level events that carry a real
  * {@link Throwable} are promoted to {@code captureException} (Issues view)
  * in addition to being captured as a structured log.
  */
@@ -129,12 +129,12 @@ class AllStakLogbackAppenderTest {
         AllStakLogbackAppender appender = new AllStakLogbackAppender();
         appender.start();
 
-        // Reproduces the AuditLogWriter pattern: caught exception, logged with
+        // Reproduces the audit-writer pattern: caught exception, logged with
         // log.error(msg, ex). Must surface in /ingest/v1/errors AND /logs.
         String marker = "Logback-promoted-marker-" + System.nanoTime();
         IllegalStateException boom = new IllegalStateException(marker);
-        appender.append(event("com.techsea.urntapi.AuditLogWriter", Level.ERROR,
-                "ClickHouse audit write failed: action=WHATSAPP_SENT", boom));
+        appender.append(event("com.example.app.AuditLogWriter", Level.ERROR,
+                "audit store write failed: action=MESSAGE_SENT", boom));
 
         await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
             wireMock.verify(postRequestedFor(urlEqualTo("/ingest/v1/errors"))

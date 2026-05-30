@@ -12,7 +12,7 @@ import java.util.regex.PatternSyntaxException;
  * WebClient, OkHttp, etc.) before injecting {@code x-allstak-trace-id} or
  * the W3C {@code traceparent}.
  *
- * <p>Matches Sentry's {@code tracePropagationTargets}:
+ * <p>Behavior of {@code tracePropagationTargets}:
  *
  * <ul>
  *   <li>Null/empty list ⇒ propagate to ALL targets (the default).</li>

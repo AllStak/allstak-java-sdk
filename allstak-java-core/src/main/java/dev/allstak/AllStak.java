@@ -151,7 +151,7 @@ public final class AllStak {
     // =========================================================================
     // Distributed Tracing — transactions & spans
     //
-    // First-class manual tracing API mirroring Sentry's ITransaction/ISpan.
+    // First-class manual tracing API built around transactions and spans.
     // startTransaction opens a root span (one sampling decision, inherited by
     // every child); startChild on the returned handle nests spans. On finish()
     // each sampled span is emitted to /ingest/v1/spans with correct
@@ -246,7 +246,7 @@ public final class AllStak {
     }
 
     // =========================================================================
-    // Scope blocks — Sentry-style three-layer Scopes API.
+    // Scope blocks — three-layer Scopes API.
     //
     // withScope: forks Current, runs block, pops (mutations don't escape).
     // withIsolationScope: pushes a fresh isolation scope for a unit of work

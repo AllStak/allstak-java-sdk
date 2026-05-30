@@ -157,7 +157,7 @@ public final class AllStakClient {
         // test classpaths (mirrors the release-registration guard) so
         // unit tests don't hit /ingest/v1/sessions/start.
         if (config.isEnableAutoSessionTracking() && !isLikelyTestRuntime()) {
-            this.sessionTracker = new SessionTracker(config, transport);
+            this.sessionTracker = new SessionTracker(config, transport, SessionTracker.defaultStatePath(config));
             this.sessionTracker.start(initialUserId());
         } else {
             this.sessionTracker = null;
@@ -348,8 +348,8 @@ public final class AllStakClient {
             // Merge release-tracking tags (sdk.name/version, platform, dist,
             // commit.sha/branch) into metadata. Caller-supplied metadata wins,
             // then scope-supplied tags/contexts/extras layered on top so the
-            // dashboard sees them as filterable fields. Masking is deferred
-            // until AFTER beforeSend (sample_rate -> beforeSend -> masking -> transport).
+            // dashboard sees them as filterable fields. The event is masked
+            // before beforeSend and again afterwards so hooks cannot leak PII.
             Map<String, Object> mergedMetaErr = new java.util.LinkedHashMap<>();
             for (var e : config.releaseTags().entrySet()) mergedMetaErr.put(e.getKey(), e.getValue());
             if (metadata != null) mergedMetaErr.putAll(metadata);
@@ -435,14 +435,15 @@ public final class AllStakClient {
                     frames.isEmpty() ? null : frames
             );
 
-            // 2. beforeSend — may modify or drop (null). Fail-open if it throws.
+            // 2. pre-hook masking + beforeSend — may modify or drop (null).
+            // Fail-open sends the pre-masked event if the hook throws.
             ErrorEvent processed = applyBeforeSend(event);
             if (processed == null) {
                 SdkLogger.debug("Exception dropped by beforeSend");
                 return;
             }
 
-            // 3. masking — scrub PII from message + metadata after beforeSend ran.
+            // 3. final masking — scrub anything beforeSend reintroduced.
             ErrorEvent masked = withMaskedMetadata(processed, config.isSendDefaultPii());
 
             // 4. transport — errors are sent immediately, no buffering. If the
@@ -503,9 +504,8 @@ public final class AllStakClient {
                 breadcrumbBuffer.add(new Breadcrumb("log", message, level, metadata));
             }
 
-            // Merge release-tracking tags into log metadata too. Masking is
-            // deferred until after beforeSend (sample_rate -> beforeSend ->
-            // masking -> transport).
+            // Merge release-tracking tags into log metadata too. The event is
+            // masked before beforeSend and again afterwards so hooks cannot leak PII.
             Map<String, Object> mergedMetaLog = new java.util.LinkedHashMap<>();
             for (var e : config.releaseTags().entrySet()) mergedMetaLog.put(e.getKey(), e.getValue());
             if (metadata != null) mergedMetaLog.putAll(metadata);
@@ -515,14 +515,15 @@ public final class AllStakClient {
             LogEvent event = new LogEvent(level, message, svc, traceId, env, spanId,
                     requestId, userId, errorId, mergedMetaLog, config.getRelease());
 
-            // 2. beforeSend — may modify or drop (null). Fail-open if it throws.
+            // 2. pre-hook masking + beforeSend — may modify or drop (null).
+            // Fail-open sends the pre-masked event if the hook throws.
             LogEvent processed = applyBeforeSend(event);
             if (processed == null) {
                 SdkLogger.debug("Log dropped by beforeSend");
                 return;
             }
 
-            // 3. masking — scrub PII from message + metadata after beforeSend ran.
+            // 3. final masking — scrub anything beforeSend reintroduced.
             LogEvent masked = withMaskedMetadata(processed, config.isSendDefaultPii());
 
             // 4. transport — buffered, flushed on timer/capacity.
@@ -710,7 +711,7 @@ public final class AllStakClient {
     }
 
     /**
-     * Span capture with an optional free-form {@code data} bag (Sentry-style
+     * Span capture with an optional free-form {@code data} bag (arbitrary
      * span data — arbitrary key/value context such as {@code db.system},
      * {@code http.status_code}). The legacy 12-arg overload keeps the
      * historical {@code data:""} wire shape so existing integrations and
@@ -950,7 +951,7 @@ public final class AllStakClient {
         }
         if (rate == null) rate = config.getTracesSampleRate();
         // Parent-sampled bit honors only when no explicit decision was set
-        // at this hop. Matches Sentry's "child inherits parent unless local
+        // at this hop, following "child inherits parent unless a local
         // override exists" semantics.
         if (rate == null && context != null && context.parentSampled() != null) {
             return context.parentSampled();
@@ -974,15 +975,56 @@ public final class AllStakClient {
     private <T> T applyBeforeSend(T event) {
         java.util.function.Function<Object, Object> hook = config.getBeforeSend();
         if (hook == null) return event;
+        T sanitized = sanitizeForBeforeSend(event);
         try {
-            Object result = hook.apply(event);
+            Object result = hook.apply(sanitized);
             // null is a deliberate drop; any non-null is the (possibly modified) event.
             return (T) result;
         } catch (Throwable t) {
-            // Fail-open: log and send the original event unmodified.
-            SdkLogger.debug("beforeSend threw — sending original event: {}", t.getMessage());
+            // Fail-open: log and send the pre-sanitized event.
+            SdkLogger.debug("beforeSend threw — sending sanitized event: {}", t.getMessage());
+            return sanitized;
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private <T> T sanitizeForBeforeSend(T event) {
+        try {
+            if (event instanceof ErrorEvent e) {
+                return (T) withMaskedMetadata(e, config.isSendDefaultPii());
+            }
+            if (event instanceof LogEvent e) {
+                return (T) withMaskedMetadata(e, config.isSendDefaultPii());
+            }
+            return event;
+        } catch (Throwable t) {
+            SdkLogger.debug("Pre-beforeSend sanitization failed — using redacted event: {}", t.getMessage());
+            if (event instanceof ErrorEvent e) {
+                return (T) redactedErrorEvent(e);
+            }
+            if (event instanceof LogEvent e) {
+                return (T) redactedLogEvent(e);
+            }
             return event;
         }
+    }
+
+    private static ErrorEvent redactedErrorEvent(ErrorEvent e) {
+        Map<String, Object> metadata = new LinkedHashMap<>();
+        metadata.put("redacted", true);
+        return new ErrorEvent(
+                e.getExceptionClass(), "[REDACTED]", e.getStackTrace(), e.getLevel(),
+                e.getEnvironment(), e.getRelease(), e.getSessionId(), e.getUser(),
+                metadata, e.getTraceId(), e.getRequestContext(), e.getBreadcrumbs(),
+                e.getPlatform(), e.getSdkName(), e.getSdkVersion(), e.getDist(), e.getFrames());
+    }
+
+    private static LogEvent redactedLogEvent(LogEvent e) {
+        Map<String, Object> metadata = new LinkedHashMap<>();
+        metadata.put("redacted", true);
+        return new LogEvent(e.getLevel(), "[REDACTED]", e.getService(), e.getTraceId(),
+                e.getEnvironment(), e.getSpanId(), e.getRequestId(), e.getUserId(),
+                e.getErrorId(), metadata, e.getRelease());
     }
 
     /**
@@ -1111,7 +1153,7 @@ public final class AllStakClient {
      * (the SDK default), strip {@code email} and {@code ip} from the
      * outgoing {@link UserContext} and keep only the stable {@code id}.
      *
-     * <p>This matches Sentry's stance: an opaque user id is the minimum
+     * <p>The principle: an opaque user id is the minimum
      * needed to compute distinct-users metrics; everything else is treated
      * as opt-in. A caller-supplied user with no id at all is dropped to
      * avoid shipping a pure-PII record.

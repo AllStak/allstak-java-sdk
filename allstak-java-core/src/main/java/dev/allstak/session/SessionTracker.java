@@ -4,8 +4,15 @@ import dev.allstak.AllStakConfig;
 import dev.allstak.internal.SdkLogger;
 import dev.allstak.transport.HttpTransport;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Properties;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -26,15 +33,25 @@ public final class SessionTracker {
 
     private static final String PATH_START = "/ingest/v1/sessions/start";
     private static final String PATH_END   = "/ingest/v1/sessions/end";
+    private static final String STATE_VERSION = "1";
+    private static final long STATE_MAX_AGE_MS = Duration.ofDays(7).toMillis();
+    private static final long RECOVERY_LOCK_MS = Duration.ofSeconds(30).toMillis();
+    private static final int RECOVERY_MAX_ATTEMPTS = 3;
 
     private final AllStakConfig config;
     private final HttpTransport transport;
+    private final Path statePath;
     private final AtomicReference<Session> active = new AtomicReference<>();
     private volatile boolean ended = false;
 
     public SessionTracker(AllStakConfig config, HttpTransport transport) {
+        this(config, transport, null);
+    }
+
+    public SessionTracker(AllStakConfig config, HttpTransport transport, Path statePath) {
         this.config = config;
         this.transport = transport;
+        this.statePath = statePath;
     }
 
     /**
@@ -62,6 +79,8 @@ public final class SessionTracker {
         if (!active.compareAndSet(null, candidate)) {
             return active.get();
         }
+        recoverPreviousSession();
+        writeOpenState(candidate, userId);
         if (transport.isDisabled()) {
             // Transport explicitly disabled (e.g. missing/blank key). Keep the
             // in-memory tracker so errored/crashed transitions still set a
@@ -109,13 +128,19 @@ public final class SessionTracker {
     /** Record an error-level event against the active session. No I/O. */
     public void recordError() {
         Session s = current();
-        if (s != null) s.recordError();
+        if (s != null) {
+            s.recordError();
+            writeOpenState(s, null);
+        }
     }
 
     /** Record a crash. No I/O — the end-of-session POST carries the status. */
     public void recordCrash() {
         Session s = current();
-        if (s != null) s.recordCrash();
+        if (s != null) {
+            s.recordCrash();
+            writeOpenState(s, null);
+        }
     }
 
     /**
@@ -130,6 +155,7 @@ public final class SessionTracker {
         ended = true;
 
         SessionStatus status = finalStatus != null ? finalStatus : s.getStatus();
+        writeClosedState(s, status);
         if (transport.isDisabled()) {
             return;
         }
@@ -157,5 +183,158 @@ public final class SessionTracker {
         String release = config.getRelease();
         if (release != null && !release.isBlank()) return release;
         return config.getSdkVersion();
+    }
+
+    private void recoverPreviousSession() {
+        Properties previous = readState();
+        if (previous == null) return;
+        long now = System.currentTimeMillis();
+        if ("true".equals(previous.getProperty("closed"))) {
+            removeState();
+            return;
+        }
+        long startedAt = parseLong(previous.getProperty("startedAt"), -1);
+        if (startedAt <= 0 || now - startedAt > STATE_MAX_AGE_MS) {
+            removeState();
+            return;
+        }
+        int attempts = (int) parseLong(previous.getProperty("recoveryAttempts"), 0);
+        if (attempts >= RECOVERY_MAX_ATTEMPTS) {
+            removeState();
+            return;
+        }
+        long lockUntil = parseLong(previous.getProperty("recoveryLockUntil"), 0);
+        if (lockUntil > now) return;
+
+        String owner = java.util.UUID.randomUUID().toString();
+        previous.setProperty("recoveryAttempts", Integer.toString(attempts + 1));
+        previous.setProperty("recoveryLockOwner", owner);
+        previous.setProperty("recoveryLockUntil", Long.toString(now + RECOVERY_LOCK_MS));
+        previous.setProperty("updatedAt", Long.toString(now));
+        writeState(previous);
+        Properties claimed = readState();
+        if (claimed == null || !owner.equals(claimed.getProperty("recoveryLockOwner"))) return;
+
+        String status = SessionStatus.CRASHED.wireValue().equals(previous.getProperty("status"))
+                ? SessionStatus.CRASHED.wireValue()
+                : SessionStatus.ABNORMAL.wireValue();
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("sessionId", previous.getProperty("sessionId"));
+        payload.put("durationMs", Math.max(0, parseLong(previous.getProperty("updatedAt"), now) - startedAt));
+        payload.put("status", status);
+        try {
+            if (!transport.isDisabled()) transport.send(PATH_END, payload);
+            previous.setProperty("status", status);
+            previous.setProperty("closed", "true");
+            previous.setProperty("endedAt", Long.toString(now));
+            previous.setProperty("recoveredAt", Long.toString(now));
+            previous.setProperty("recoveryLockUntil", "0");
+            writeState(previous);
+        } catch (Throwable t) {
+            previous.setProperty("recoveryLockUntil", "0");
+            writeState(previous);
+            SdkLogger.debug("Session recovery failed: {}", t.getMessage());
+        }
+    }
+
+    private void writeOpenState(Session s, String userId) {
+        if (statePath == null) return;
+        Properties p = baseState(s, s.getStatus());
+        p.setProperty("closed", "false");
+        if (userId != null) p.setProperty("userId", userId);
+        writeState(p);
+    }
+
+    private void writeClosedState(Session s, SessionStatus status) {
+        if (statePath == null) return;
+        Properties p = baseState(s, status);
+        p.setProperty("closed", "true");
+        p.setProperty("endedAt", Long.toString(System.currentTimeMillis()));
+        writeState(p);
+    }
+
+    private Properties baseState(Session s, SessionStatus status) {
+        Properties p = new Properties();
+        p.setProperty("version", STATE_VERSION);
+        p.setProperty("sessionId", s.getId());
+        p.setProperty("startedAt", Long.toString(s.getStartedAt().toEpochMilli()));
+        p.setProperty("updatedAt", Long.toString(System.currentTimeMillis()));
+        p.setProperty("status", status.wireValue());
+        p.setProperty("release", resolveRelease());
+        putIfPresent(p, "environment", config.getEnvironment());
+        putIfPresent(p, "sdkName", config.getSdkName());
+        putIfPresent(p, "sdkVersion", config.getSdkVersion());
+        putIfPresent(p, "platform", config.getPlatform());
+        return p;
+    }
+
+    private Properties readState() {
+        if (statePath == null || !Files.exists(statePath)) return null;
+        Properties p = new Properties();
+        try (InputStream in = Files.newInputStream(statePath)) {
+            p.load(in);
+            if (!isValidState(p)) {
+                removeState();
+                return null;
+            }
+            return p;
+        } catch (Throwable t) {
+            removeState();
+            return null;
+        }
+    }
+
+    private void writeState(Properties p) {
+        if (statePath == null) return;
+        try {
+            Path parent = statePath.getParent();
+            if (parent != null) Files.createDirectories(parent);
+            Path tmp = statePath.resolveSibling(statePath.getFileName() + ".tmp");
+            try (OutputStream out = Files.newOutputStream(tmp)) {
+                p.store(out, "AllStak session recovery state");
+            }
+            Files.move(tmp, statePath, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException ignored) {
+            // fail-open
+        }
+    }
+
+    private void removeState() {
+        if (statePath == null) return;
+        try {
+            Files.deleteIfExists(statePath);
+        } catch (IOException ignored) {
+            // ignore
+        }
+    }
+
+    private static boolean isValidState(Properties p) {
+        String status = p.getProperty("status");
+        return STATE_VERSION.equals(p.getProperty("version"))
+                && p.getProperty("sessionId") != null
+                && parseLong(p.getProperty("startedAt"), -1) > 0
+                && parseLong(p.getProperty("updatedAt"), -1) > 0
+                && (SessionStatus.OK.wireValue().equals(status)
+                || SessionStatus.ERRORED.wireValue().equals(status)
+                || SessionStatus.CRASHED.wireValue().equals(status)
+                || SessionStatus.ABNORMAL.wireValue().equals(status));
+    }
+
+    private static long parseLong(String value, long fallback) {
+        try {
+            return value == null ? fallback : Long.parseLong(value);
+        } catch (NumberFormatException e) {
+            return fallback;
+        }
+    }
+
+    private static void putIfPresent(Properties p, String key, String value) {
+        if (value != null) p.setProperty(key, value);
+    }
+
+    public static Path defaultStatePath(AllStakConfig config) {
+        String release = config.getRelease() != null ? config.getRelease() : config.getSdkVersion();
+        String safe = release == null ? "default" : release.replaceAll("[^a-zA-Z0-9._-]", "_");
+        return Path.of(System.getProperty("java.io.tmpdir"), "allstak-session-state", "session-" + safe + ".properties");
     }
 }

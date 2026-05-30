@@ -4,7 +4,10 @@ import com.github.tomakehurst.wiremock.WireMockServer;
 import dev.allstak.AllStakConfig;
 import dev.allstak.transport.HttpTransport;
 import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.io.TempDir;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
@@ -17,6 +20,8 @@ class SessionTrackerTest {
     private static WireMockServer wireMock;
     private HttpTransport transport;
     private AllStakConfig config;
+    @TempDir
+    Path tempDir;
 
     @BeforeAll
     static void startServer() {
@@ -207,5 +212,92 @@ class SessionTrackerTest {
         await().atMost(Duration.ofSeconds(2)).untilAsserted(() ->
                 wireMock.verify(1, postRequestedFor(urlEqualTo("/ingest/v1/sessions/end"))
                         .withRequestBody(matchingJsonPath("$[?(@.status == 'abnormal')]"))));
+    }
+
+    @Test
+    void cleanShutdown_doesNotRecoverAbnormalOnNextStart() {
+        Path statePath = tempDir.resolve("session.properties");
+        SessionTracker first = new SessionTracker(config, transport, statePath);
+        first.start();
+        first.end(null);
+        wireMock.resetRequests();
+
+        SessionTracker second = new SessionTracker(config, transport, statePath);
+        second.start();
+
+        await().atMost(Duration.ofSeconds(2)).untilAsserted(() ->
+                wireMock.verify(1, postRequestedFor(urlEqualTo("/ingest/v1/sessions/start"))));
+        wireMock.verify(0, postRequestedFor(urlEqualTo("/ingest/v1/sessions/end"))
+                .withRequestBody(matchingJsonPath("$[?(@.status == 'abnormal')]")));
+    }
+
+    @Test
+    void openSession_reportsAbnormalOnNextStart() {
+        Path statePath = tempDir.resolve("session.properties");
+        SessionTracker first = new SessionTracker(config, transport, statePath);
+        Session session = first.start();
+        await().atMost(Duration.ofSeconds(2)).untilAsserted(() ->
+                wireMock.verify(1, postRequestedFor(urlEqualTo("/ingest/v1/sessions/start"))));
+        wireMock.resetRequests();
+
+        SessionTracker second = new SessionTracker(config, transport, statePath);
+        second.start();
+
+        await().atMost(Duration.ofSeconds(2)).untilAsserted(() ->
+                wireMock.verify(1, postRequestedFor(urlEqualTo("/ingest/v1/sessions/end"))
+                        .withRequestBody(matchingJsonPath("$[?(@.sessionId == '" + session.getId() + "')]"))
+                        .withRequestBody(matchingJsonPath("$[?(@.status == 'abnormal')]"))));
+    }
+
+    @Test
+    void crashedOpenSession_reportsCrashedOnNextStart() {
+        Path statePath = tempDir.resolve("session.properties");
+        SessionTracker first = new SessionTracker(config, transport, statePath);
+        Session session = first.start();
+        first.recordCrash();
+        wireMock.resetRequests();
+
+        SessionTracker second = new SessionTracker(config, transport, statePath);
+        second.start();
+
+        await().atMost(Duration.ofSeconds(2)).untilAsserted(() ->
+                wireMock.verify(1, postRequestedFor(urlEqualTo("/ingest/v1/sessions/end"))
+                        .withRequestBody(matchingJsonPath("$[?(@.sessionId == '" + session.getId() + "')]"))
+                        .withRequestBody(matchingJsonPath("$[?(@.status == 'crashed')]"))));
+    }
+
+    @Test
+    void corruptSessionState_isClearedSafely() throws Exception {
+        Path statePath = tempDir.resolve("session.properties");
+        Files.writeString(statePath, "{not-properties");
+        SessionTracker tracker = new SessionTracker(config, transport, statePath);
+        tracker.start();
+
+        await().atMost(Duration.ofSeconds(2)).untilAsserted(() ->
+                wireMock.verify(1, postRequestedFor(urlEqualTo("/ingest/v1/sessions/start"))));
+        wireMock.verify(0, postRequestedFor(urlEqualTo("/ingest/v1/sessions/end")));
+    }
+
+    @Test
+    void recoveredAbnormalSession_isNotReportedTwice() {
+        Path statePath = tempDir.resolve("session.properties");
+        SessionTracker first = new SessionTracker(config, transport, statePath);
+        first.start();
+        wireMock.resetRequests();
+
+        SessionTracker second = new SessionTracker(config, transport, statePath);
+        second.start();
+        await().atMost(Duration.ofSeconds(2)).untilAsserted(() ->
+                wireMock.verify(1, postRequestedFor(urlEqualTo("/ingest/v1/sessions/end"))
+                        .withRequestBody(matchingJsonPath("$[?(@.status == 'abnormal')]"))));
+        second.end(null);
+        wireMock.resetRequests();
+
+        SessionTracker third = new SessionTracker(config, transport, statePath);
+        third.start();
+        await().atMost(Duration.ofSeconds(2)).untilAsserted(() ->
+                wireMock.verify(1, postRequestedFor(urlEqualTo("/ingest/v1/sessions/start"))));
+        wireMock.verify(0, postRequestedFor(urlEqualTo("/ingest/v1/sessions/end"))
+                .withRequestBody(matchingJsonPath("$[?(@.status == 'abnormal')]")));
     }
 }

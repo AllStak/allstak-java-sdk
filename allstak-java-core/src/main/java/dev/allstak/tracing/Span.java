@@ -9,7 +9,7 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * A first-class tracing span, modeled on Sentry's {@code ISpan}. Created via
+ * A first-class tracing span. Created via
  * {@link Transaction#startChild(String, String)} (or, for the root, via
  * {@link AllStakClient}-backed {@link Transaction}). A span records an
  * operation, an optional human-readable description, free-form tags/data, and
@@ -24,7 +24,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * reconstruct the tree.
  *
  * <p><b>Sampling.</b> The sampling decision is made once, at transaction start,
- * and inherited by every child (Sentry semantics). An unsampled span is a
+ * and inherited by every child. An unsampled span is a
  * cheap no-op: tags/data setters and {@code finish} do nothing and emit
  * nothing, so a {@code tracesSampleRate} of 0 imposes near-zero overhead.
  *
@@ -106,7 +106,7 @@ public class Span {
         return this;
     }
 
-    /** Attach an arbitrary data value (Sentry-style span data). Returns {@code this}. */
+    /** Attach an arbitrary data value (free-form span data). Returns {@code this}. */
     public Span setData(String key, Object value) {
         if (key != null) {
             synchronized (data) { data.put(key, value); }

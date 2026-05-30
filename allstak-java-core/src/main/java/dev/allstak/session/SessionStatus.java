@@ -4,7 +4,7 @@ package dev.allstak.session;
  * Lifecycle status of a release-health session.
  *
  * <p>Vocabulary matches the AllStak backend's {@code /ingest/v1/sessions/end}
- * contract and Sentry's release-health conventions:
+ * contract and standard release-health conventions:
  *
  * <ul>
  *   <li>{@link #OK} — session ended normally with at most non-fatal logs.</li>

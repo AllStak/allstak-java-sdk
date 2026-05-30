@@ -19,7 +19,7 @@ public final class AllStakConfig {
     public static final String INGEST_HOST = "https://api.allstak.sa";
     /** Hardcoded SDK identity. Sent on the wire as {@code sdk.name} / {@code sdk.version}. */
     public static final String SDK_NAME = "allstak-java";
-    public static final String SDK_VERSION = "0.1.5";
+    public static final String SDK_VERSION = "0.4.0";
 
     private final String apiKey;
     private final String environment;
@@ -153,7 +153,9 @@ public final class AllStakConfig {
      * Receives the SDK event ({@link dev.allstak.model.ErrorEvent} or
      * {@link dev.allstak.model.LogEvent}) and may return a modified event, the
      * same event, or {@code null} to drop it. Runs for both exception and
-     * message capture, after sample-rate filtering and before PII masking.
+     * message capture after sample-rate filtering and after a first PII masking
+     * pass. The returned event is masked again before persistence/network send,
+     * so hooks cannot reintroduce secrets.
      */
     public Function<Object, Object> getBeforeSend() { return beforeSend; }
     /** Error/message sampling rate in [0.0, 1.0]. Default 1.0 (keep everything). */
@@ -175,7 +177,7 @@ public final class AllStakConfig {
     /**
      * Whether to ship personally-identifying information by default.
      *
-     * <p><b>Default {@code false}</b> — matches Sentry's privacy-by-default
+     * <p><b>Default {@code false}</b> — a privacy-by-default
      * stance. When false the SDK strips {@code user.email} and {@code user.ip}
      * on captured events, drops {@code Authorization} / {@code Cookie} headers
      * on captured HTTP requests, and skips request/response body capture in
@@ -321,9 +323,10 @@ public final class AllStakConfig {
          */
         public Builder autoDetectRelease(boolean autoDetectRelease) { this.autoDetectRelease = autoDetectRelease; return this; }
         /**
-         * Callback invoked just before an event is sent. Return the event
-         * (modified or not) to keep it, or {@code null} to drop it. Receives an
+         * Callback invoked just before an event is sent. Receives a sanitized
          * {@link dev.allstak.model.ErrorEvent} or {@link dev.allstak.model.LogEvent}.
+         * Return the event (modified or not) to keep it, or {@code null} to drop it.
+         * The returned event is sanitized again before persistence/network send.
          */
         public Builder beforeSend(Function<Object, Object> beforeSend) { this.beforeSend = beforeSend; return this; }
         /** Error/message sampling rate in [0.0, 1.0]. Default 1.0. */

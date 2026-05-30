@@ -7,6 +7,7 @@ import dev.allstak.model.LogEvent;
 import dev.allstak.transport.HttpTransport;
 import org.junit.jupiter.api.*;
 
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.DoubleSupplier;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
@@ -107,6 +108,59 @@ class BeforeSendSamplingTest {
         // Original event still sent despite the throwing hook.
         wireMock.verify(postRequestedFor(urlEqualTo("/ingest/v1/errors"))
                 .withRequestBody(containing("\"message\":\"boom\"")));
+        client.shutdown();
+    }
+
+    @Test
+    void beforeSendReceivesSanitizedEvent() {
+        AtomicReference<ErrorEvent> seen = new AtomicReference<>();
+        AllStakConfig config = baseConfig()
+                .beforeSend(event -> {
+                    if (event instanceof ErrorEvent e) seen.set(e);
+                    return event;
+                })
+                .build();
+        AllStakClient client = client(config, () -> 0.0);
+        client.captureException(new RuntimeException("card 4111111111111111"),
+                java.util.Map.of(
+                        "Authorization", "Bearer abc",
+                        "nested", java.util.Map.of("apiKey", "key-123")));
+
+        assertThat(seen.get()).isNotNull();
+        assertThat(seen.get().getMessage()).isEqualTo("card [REDACTED]");
+        assertThat(seen.get().getMetadata()).containsEntry("Authorization", "[MASKED]");
+        @SuppressWarnings("unchecked")
+        java.util.Map<Object, Object> nested = (java.util.Map<Object, Object>) seen.get().getMetadata().get("nested");
+        assertThat(nested)
+                .containsEntry("apiKey", "[MASKED]");
+        client.shutdown();
+    }
+
+    @Test
+    void beforeSendCannotReintroduceSecretsOnWire() {
+        AllStakConfig config = baseConfig()
+                .beforeSend(event -> {
+                    if (event instanceof ErrorEvent e) {
+                        java.util.Map<String, Object> meta = new java.util.LinkedHashMap<>(
+                                e.getMetadata() == null ? java.util.Map.of() : e.getMetadata());
+                        meta.put("Authorization", "Bearer abc");
+                        meta.put("nested", java.util.Map.of("token", "secret-token"));
+                        return new ErrorEvent(e.getExceptionClass(), "card 4111111111111111", e.getStackTrace(),
+                                e.getLevel(), e.getEnvironment(), e.getRelease(), e.getSessionId(),
+                                e.getUser(), meta, e.getTraceId(), e.getRequestContext(),
+                                e.getBreadcrumbs(), e.getPlatform(), e.getSdkName(), e.getSdkVersion(),
+                                e.getDist(), e.getFrames());
+                    }
+                    return event;
+                })
+                .build();
+        AllStakClient client = client(config, () -> 0.0);
+        client.captureException(new RuntimeException("boom"));
+
+        wireMock.verify(postRequestedFor(urlEqualTo("/ingest/v1/errors"))
+                .withRequestBody(containing("\"message\":\"card [REDACTED]\""))
+                .withRequestBody(containing("\"Authorization\":\"[MASKED]\""))
+                .withRequestBody(containing("\"token\":\"[MASKED]\"")));
         client.shutdown();
     }
 

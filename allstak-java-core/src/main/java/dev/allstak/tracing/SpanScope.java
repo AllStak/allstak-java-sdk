@@ -4,7 +4,7 @@ package dev.allstak.tracing;
  * Thread-local registry of the currently active {@link Span} so that
  * auto-instrumentation (HTTP/DB/cache interceptors) and {@code captureException}
  * can discover the in-flight transaction/span and attach to it — the
- * "current span" the same way Sentry exposes {@code getSpan()} on the hub.
+ * "current span" exposed to callers.
  *
  * <p>The active span is maintained as a per-thread stack: {@link #push(Span)}
  * when a span starts, {@link #pop(Span)} when it finishes. {@link #current()}

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0">
     <modelVersion>4.0.0</modelVersion>
-    <parent><groupId>sa.allstak</groupId><artifactId>allstak-java-parent</artifactId><version>0.3.0</version><relativePath>../pom.xml</relativePath></parent>
+    <parent><groupId>sa.allstak</groupId><artifactId>allstak-java-parent</artifactId><version>0.4.0</version><relativePath>../pom.xml</relativePath></parent>
     <artifactId>allstak-reactor</artifactId>
     <name>AllStak Java SDK - Reactor</name>
     <description>Project Reactor scope propagation across Mono/Flux thread hops.</description>

@@ -31,8 +31,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  * <p>All mutation is read/write-lock guarded so background threads can safely
  * read while a request handler updates the isolation scope.
  *
- * <p>Modelled after Sentry's {@code IScope} with the three-layer scopes API
- * introduced in their 8.x line, adapted to the AllStak model surface.
+ * <p>Implements a three-layer scopes API adapted to the AllStak model surface.
  */
 public final class Scope {
 

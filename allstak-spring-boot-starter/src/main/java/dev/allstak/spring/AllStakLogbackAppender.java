@@ -21,7 +21,7 @@ import java.util.Map;
  * {@code ERROR} level <em>and</em> carries a {@link Throwable}, the throwable
  * is also reported via {@link AllStakClient#captureException} so that errors
  * which are caught and logged (rather than propagated) still surface in the
- * AllStak Issues view. This mirrors the Sentry Logback appender's behavior.
+ * AllStak Issues view.
  */
 public class AllStakLogbackAppender extends AppenderBase<ILoggingEvent> {
 

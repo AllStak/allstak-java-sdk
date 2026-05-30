@@ -135,7 +135,7 @@ public final class AllStakLog4j2Appender extends AbstractAppender {
 
             // Promote ERROR-with-throwable to a captureException so caught-and-
             // logged exceptions still surface in the Issues view. Mirrors the
-            // Logback appender and Sentry's behavior.
+            // Logback appender's behavior.
             if (thrown != null && eventLevel.isMoreSpecificThan(Level.ERROR)) {
                 Map<String, Object> errMeta = metadata == null ? new java.util.HashMap<>() : new java.util.HashMap<>(metadata);
                 if (formatted != null) errMeta.put("log_message", formatted);
